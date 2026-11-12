@@ -22,13 +22,13 @@ Skills for coding agents that keep your website findable and healthy on the web.
 **Any agent** (Claude Code, Codex, Cursor and more):
 
 ```bash
-npx skills add Nithish-Yenaganti/stayonweb
+npx skills add Nithish-Yenaganti/sow
 ```
 
 **Claude Code plugin:**
 
 ```
-/plugin marketplace add Nithish-Yenaganti/stayonweb
+/plugin marketplace add Nithish-Yenaganti/sow
 /plugin install findable@sow
 ```
 
