@@ -1,23 +1,33 @@
 {
-  "name": "stayonweb",
+  "name": "sow",
   "owner": {
     "name": "Nithish-Yenaganti"
   },
   "metadata": {
-    "description": "Skills that keep your website findable and healthy on the web."
+    "description": "SOW (Stay On Web): skills that keep your website findable and healthy on the web."
   },
   "plugins": [
     {
       "name": "findable",
       "source": "./",
       "strict": false,
-      "skills": ["./skills/findable"],
+      "skills": [
+        "./skills/findable"
+      ],
       "description": "Can Google and AI engines find, read and cite your site? Scans your code and live site, fixes what blocks it (SEO, AEO, GEO), and verifies the fixes.",
       "version": "0.1.0",
-      "author": { "name": "Nithish-Yenaganti" },
+      "author": {
+        "name": "Nithish-Yenaganti"
+      },
       "license": "MIT",
       "category": "seo",
-      "keywords": ["seo", "aeo", "geo", "ai-search", "indexing"]
+      "keywords": [
+        "seo",
+        "aeo",
+        "geo",
+        "ai-search",
+        "indexing"
+      ]
     }
   ]
 }

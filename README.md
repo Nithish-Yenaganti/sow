@@ -1,4 +1,14 @@
-# stayonweb
+<p align="center">
+  <img src="assets/banner.svg" alt="SOW — Stay On Web" width="100%">
+</p>
+
+<p align="center">
+  <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-5eead4"></a>
+  <img alt="Works with Claude Code, Codex, Cursor" src="https://img.shields.io/badge/agents-Claude%20Code%20%C2%B7%20Codex%20%C2%B7%20Cursor-60a5fa">
+  <img alt="No API keys" src="https://img.shields.io/badge/API%20keys-none-0e1a2b">
+</p>
+
+# SOW — Stay On Web
 
 Skills for coding agents that keep your website findable and healthy on the web. Each one runs inside your project, asks you when there's a real choice, and never commits or deploys for you.
 
@@ -19,7 +29,7 @@ npx skills add Nithish-Yenaganti/stayonweb
 
 ```
 /plugin marketplace add Nithish-Yenaganti/stayonweb
-/plugin install findable@stayonweb
+/plugin install findable@sow
 ```
 
 Requires [uv](https://docs.astral.sh/uv/getting-started/installation/), which runs the skill's bundled CLI.
