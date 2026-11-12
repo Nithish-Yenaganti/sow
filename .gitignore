@@ -1,0 +1,29 @@
+# Python (bundled skill CLIs)
+__pycache__/
+*.py[cod]
+.venv/
+dist/
+build/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+htmlcov/
+
+# Node (if a future skill ships JS)
+node_modules/
+*.tgz
+
+# Scan output when running a skill on this repo or its fixtures
+.findable/
+
+# Local secrets and per-user agent settings
+.env
+.env.*
+.claude/settings.local.json
+
+# Editors / OS
+.DS_Store
+.idea/
+.vscode/

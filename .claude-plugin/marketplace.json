@@ -1,0 +1,19 @@
+{
+  "name": "stayonweb",
+  "owner": {
+    "name": "stayonweb"
+  },
+  "metadata": {
+    "description": "Skills that keep your website findable, compliant and alive on the web."
+  },
+  "plugins": [
+    {
+      "name": "findable",
+      "source": "./plugins/findable",
+      "description": "Can Google and AI engines find, read and cite your site? Scans your code and live site, fixes what blocks it (SEO, AEO, GEO), and verifies the fixes.",
+      "version": "0.1.0",
+      "category": "seo",
+      "tags": ["seo", "aeo", "geo", "ai-search", "indexing"]
+    }
+  ]
+}
