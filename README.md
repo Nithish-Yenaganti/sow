@@ -1,24 +1,29 @@
 # stayonweb
 
-Skills for coding agents that keep your website findable and healthy on the web. Each one runs inside your project, asks when there's a real choice, and never commits or deploys for you.
+Skills for coding agents that keep your website findable and healthy on the web. Each one runs inside your project, asks you when there's a real choice, and never commits or deploys for you.
 
-| Plugin | What it does |
+| Skill | What it does |
 |---|---|
-| [findable](plugins/findable) | Can Google and AI engines find, read and cite your site? Scans code + live site, fixes SEO/AEO/GEO issues, verifies them. |
-| compliance *(coming)* | Compliance audit for your site. |
+| [findable](plugins/findable) | Checks whether Google and AI engines (ChatGPT, Perplexity, Claude, Gemini) can find, read and cite your site, fixes what blocks it, and verifies the fixes. |
+| compliance *(coming soon)* | Compliance audit for your site. |
 
-## Install (Claude Code)
+## Install
+
+**Claude Code**
 
 ```
-/plugin marketplace add <github-owner>/stayonweb
+/plugin marketplace add Nithish-Yenaganti/stayonweb
 /plugin install findable@stayonweb
 ```
 
-Most skills need [uv](https://docs.astral.sh/uv/) to run their bundled CLI.
+**Codex and other agents:** copy `plugins/findable/skills/findable/` into your project's `.agents/skills/`.
 
-## Adding a plugin
+Requires [uv](https://docs.astral.sh/uv/getting-started/installation/), which runs the skill's bundled CLI.
 
-1. Create `plugins/<name>/` with `.claude-plugin/plugin.json` and `skills/<name>/SKILL.md`.
-2. Put anything the skill runs inside its skill folder, so it also works when copied on its own (Codex).
-3. Add an entry to `.claude-plugin/marketplace.json`.
-4. Check it: `claude plugin validate .`
+## Use
+
+Ask your agent "check my site's SEO" or "run findable" (in Claude Code: `/findable:findable`).
+
+## License
+
+MIT

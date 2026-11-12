@@ -6,7 +6,6 @@ Exit codes: 0 ok · 1 error · 3 needs input (JSON questions printed; agent asks
 from __future__ import annotations
 
 import json
-import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Optional
@@ -170,11 +169,3 @@ def dismiss(
         raise typer.Exit(1)
     findings.save(root, store)
     typer.echo(f"✓ dismissed {fingerprint}")
-
-
-def main() -> None:  # pragma: no cover
-    app()
-
-
-if __name__ == "__main__":  # pragma: no cover
-    sys.exit(app())

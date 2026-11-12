@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 import re
 import xml.etree.ElementTree as ET
-from urllib.parse import urljoin, urlparse
+from urllib.parse import urlparse
 
 import httpx
 from protego import Protego
