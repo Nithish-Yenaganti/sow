@@ -29,4 +29,4 @@ build-backend = "hatchling.build"
 packages = ["src/findable"]
 
 [tool.pytest.ini_options]
-testpaths = ["../../../tests"]
+testpaths = ["../../../tests/findable"]

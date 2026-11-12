@@ -1,19 +1,23 @@
 {
   "name": "stayonweb",
   "owner": {
-    "name": "stayonweb"
+    "name": "Nithish-Yenaganti"
   },
   "metadata": {
-    "description": "Skills that keep your website findable, compliant and alive on the web."
+    "description": "Skills that keep your website findable and healthy on the web."
   },
   "plugins": [
     {
       "name": "findable",
-      "source": "./plugins/findable",
+      "source": "./",
+      "strict": false,
+      "skills": ["./skills/findable"],
       "description": "Can Google and AI engines find, read and cite your site? Scans your code and live site, fixes what blocks it (SEO, AEO, GEO), and verifies the fixes.",
       "version": "0.1.0",
+      "author": { "name": "Nithish-Yenaganti" },
+      "license": "MIT",
       "category": "seo",
-      "tags": ["seo", "aeo", "geo", "ai-search", "indexing"]
+      "keywords": ["seo", "aeo", "geo", "ai-search", "indexing"]
     }
   ]
 }

@@ -25,12 +25,12 @@ Saved in `.findable/` in your project:
 ## Develop
 
 ```bash
-cd skills/findable/cli
+cd skills/findable/cli   # from the repo root
 uv run pytest
-uv run findable scan --path ../../../tests/fixtures/static-broken --url none
+uv run findable scan --path ../../../tests/findable/fixtures/static-broken --url none
 ```
 
-To release, bump the version in `.claude-plugin/plugin.json`, `skills/findable/cli/pyproject.toml`, `skills/findable/cli/src/findable/__init__.py` and `../../.claude-plugin/marketplace.json`.
+To release, bump the version in `cli/pyproject.toml`, `cli/src/findable/__init__.py` and the root `.claude-plugin/marketplace.json`.
 
 ## Roadmap
 
