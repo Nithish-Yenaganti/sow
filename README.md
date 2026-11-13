@@ -30,14 +30,16 @@ npx skills add Nithish-Yenaganti/sow
 
 ```
 /plugin marketplace add Nithish-Yenaganti/sow
-/plugin install findable@sow
+/plugin install sow@sow
 ```
+
+One install gives you every SOW skill.
 
 Requires [uv](https://docs.astral.sh/uv/getting-started/installation/), which runs the skill's bundled CLI.
 
 ## Use
 
-Ask your agent "check my site's SEO" or "run findable".
+Ask your agent "check my site's SEO" or "run findable". In Claude Code you can also type `/sow:findable` (or `/findable` if you installed with `npx skills`).
 
 ## Repo layout
 
