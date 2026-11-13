@@ -13,7 +13,7 @@ from typing import Optional
 import typer
 
 from findable import __version__, ask, findings, report
-from findable.detect import detect
+from findable.detect import app_at, detect
 from findable.verify import collect, fixable_scope, verify_targets
 
 app = typer.Typer(add_completion=False, no_args_is_help=True,
@@ -119,7 +119,7 @@ def verify(
     root = _root(path)
     cfg = ask.load_config(root)
     apps = {a.root: a for a in detect(root)}
-    app_obj = apps.get(cfg.get("app", ""))
+    app_obj = apps.get(cfg.get("app", "")) or (app_at(root, cfg["app"]) if cfg.get("app") else None)
     if app_obj is None:
         typer.echo("No previous scan config. Run: findable scan")
         raise typer.Exit(1)

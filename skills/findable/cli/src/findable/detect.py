@@ -253,6 +253,12 @@ def _candidate_app_dirs(root: Path) -> list[Path]:
             for d in sorted((root / parent).glob("*")) if (root / parent).is_dir() else []:
                 if d.is_dir() and (d / "package.json").is_file():
                     dirs.append(d)
+    if not dirs:
+        # A site in a top-level folder such as web/, site/ or frontend/ (no workspaces).
+        for d in sorted(root.iterdir()):
+            if (d.is_dir() and not d.name.startswith(".") and d.name not in IGNORE_DIRS
+                    and (d / "package.json").is_file() and _framework(d) not in ("unknown", "static")):
+                dirs.append(d)
     return dirs
 
 
@@ -264,11 +270,21 @@ def detect(project_root: str | Path) -> list[App]:
         if fw in {"unknown"}:
             continue
         apps.append(_build_app(d, root, fw))
-    if not apps:
-        fw = _framework(root)
-        if fw != "unknown":
-            apps.append(_build_app(root, root, fw))
+    root_fw = _framework(root)
+    # The root is a site too if it has a real framework, or if nothing else was found.
+    if root_fw not in ("unknown", "static") or (not apps and root_fw == "static"):
+        apps.insert(0, _build_app(root, root, root_fw))
     return apps
+
+
+def app_at(project_root: str | Path, rel: str) -> App | None:
+    """Build the app at an explicit folder (from --app), even if detection didn't list it."""
+    root = Path(project_root).resolve()
+    d = (root / rel).resolve()
+    if not d.is_dir() or (d != root and root not in d.parents):
+        return None
+    fw = _framework(d)
+    return None if fw == "unknown" else _build_app(d, root, fw)
 
 
 def _build_app(d: Path, root: Path, fw: str) -> App:

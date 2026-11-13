@@ -13,7 +13,7 @@ from pathlib import Path
 
 import httpx
 
-from findable.detect import App
+from findable.detect import App, app_at
 
 CONFIG_DIR = ".findable"
 
@@ -86,10 +86,29 @@ def resolve(root: Path, apps: list[App], app_arg: str | None, url_arg: str | Non
 
     # ---- Q1: which app -------------------------------------------------------
     by_root = {a.root: a for a in apps}
-    chosen = app_arg or cfg.get("app")
-    if chosen and chosen not in by_root:
-        res.notes.append(f"Remembered app '{chosen}' no longer exists; asking again.")
-        chosen = None
+    if app_arg:
+        # An explicit --app always wins; never fall back to another folder.
+        key = app_arg.strip().strip("/") or "."
+        if key not in by_root:
+            explicit = app_at(root, key)
+            if explicit is None:
+                res.notes.append(f"'{app_arg}' is not a website folder findable recognises "
+                                 "(no Next.js/Astro/Nuxt/SvelteKit/Remix/Gatsby/Hugo/Jekyll/HTML found there).")
+                return res
+            by_root[explicit.root] = explicit
+            apps = apps + [explicit]
+            key = explicit.root
+        chosen = key
+    else:
+        chosen = cfg.get("app")
+        if chosen and chosen not in by_root:
+            explicit = app_at(root, chosen)
+            if explicit is not None:
+                by_root[explicit.root] = explicit
+                apps = apps + [explicit]
+            else:
+                res.notes.append(f"Remembered app '{chosen}' no longer exists; asking again.")
+                chosen = None
     if not apps:
         res.notes.append("No website found in this folder (no Next.js/Astro/Nuxt/SvelteKit/static HTML).")
         return res
