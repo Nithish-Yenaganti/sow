@@ -39,35 +39,69 @@ CHALLENGE_MARKERS = ("cf-chl", "challenge-platform", "Just a moment...", "Attent
                      "captcha", "px-captcha", "Access denied", "_Incapsula_")
 SHELL_IDS = ("__next", "root", "app", "__nuxt", "svelte", "___gatsby")
 NS = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
+MAX_PAGE_BYTES = 5_000_000          # untrusted responses are read up to this size
+MAX_SITEMAP_BYTES = 20_000_000
 
 
-def _norm(u: str) -> str:
-    p = urlparse(u)
-    path = p.path.rstrip("/") or "/"
-    return path
+def site_host(netloc: str) -> str:
+    """Host without port case and a leading www., so example.com and www.example.com match."""
+    h = netloc.lower()
+    return h[4:] if h.startswith("www.") else h
 
 
-async def _get(client: httpx.AsyncClient, url: str, ua: str) -> dict:
+def _rel(path: str, prefix: str) -> str:
+    """Site-relative path: strip the base path (sites served under /repo) and trailing slash."""
+    path = path or "/"
+    if prefix and (path == prefix or path.startswith(prefix + "/")):
+        path = path[len(prefix):] or "/"
+    return path.rstrip("/") or "/"
+
+
+async def _get(client: httpx.AsyncClient, url: str, ua: str, max_bytes: int = MAX_PAGE_BYTES) -> dict:
     try:
-        r = await client.get(url, headers={"User-Agent": ua, "Accept": "text/html,application/xml;q=0.9,*/*;q=0.8"})
-        return {
-            "status": r.status_code,
-            "final_url": str(r.url),
-            "redirects": [str(h.url) for h in r.history],
-            "text": r.text if "html" in r.headers.get("content-type", "") or "xml" in r.headers.get("content-type", "") or r.headers.get("content-type", "").startswith("text/") else "",
-            "server": r.headers.get("server", ""),
-        }
+        async with client.stream("GET", url, headers={"User-Agent": ua, "Accept": "text/html,application/xml;q=0.9,*/*;q=0.8"}) as r:
+            ctype = r.headers.get("content-type", "")
+            texty = "html" in ctype or "xml" in ctype or ctype.startswith("text/")
+            body = bytearray()
+            truncated = False
+            if texty:
+                async for chunk in r.aiter_bytes():
+                    body += chunk
+                    if len(body) > max_bytes:
+                        truncated = True
+                        break
+            text = body[:max_bytes].decode(r.encoding or "utf-8", errors="replace") if texty else ""
+            return {
+                "status": r.status_code,
+                "final_url": str(r.url),
+                "redirects": [str(h.url) for h in r.history],
+                "text": text,
+                "truncated": truncated,
+                "server": r.headers.get("server", ""),
+            }
     except httpx.HTTPError as e:
         return {"status": None, "error": f"{type(e).__name__}: {e}", "redirects": [], "text": ""}
 
 
-async def _sitemap_urls(client: httpx.AsyncClient, url: str, depth: int = 0, limit: int = 2000) -> tuple[list[str], dict]:
-    res = await _get(client, url, OWN_UA)
-    info = {"url": url, "status": res.get("status"), "error": res.get("error")}
-    if res.get("status") != 200 or not res["text"].lstrip().startswith("<"):
+async def _sitemap_urls(client: httpx.AsyncClient, url: str, host: str, depth: int = 0, limit: int = 2000) -> tuple[list[str], dict]:
+    info: dict = {"url": url, "status": None, "error": None}
+    if site_host(urlparse(url).netloc) != host:
+        # Never follow sitemap references to other hosts (could be internal addresses).
+        info["error"] = "skipped: sitemap on another host"
+        return [], info
+    res = await _get(client, url, OWN_UA, MAX_SITEMAP_BYTES)
+    info.update(status=res.get("status"), error=res.get("error"))
+    text = res["text"].lstrip()
+    if res.get("status") != 200 or not text.startswith("<"):
+        return [], info
+    if res.get("truncated"):
+        info["error"] = f"sitemap larger than {MAX_SITEMAP_BYTES // 1_000_000} MB; not parsed"
+        return [], info
+    if "<!DOCTYPE" in text[:2000].upper() or "<!ENTITY" in text.upper():
+        info["error"] = "sitemap contains a DTD/entities; not parsed"
         return [], info
     try:
-        root = ET.fromstring(res["text"].encode())
+        root = ET.fromstring(text.encode())
     except ET.ParseError as e:
         info["error"] = f"invalid XML: {e}"
         return [], info
@@ -76,7 +110,7 @@ async def _sitemap_urls(client: httpx.AsyncClient, url: str, depth: int = 0, lim
     if tag == "sitemapindex" and depth < 2:
         out: list[str] = []
         for child in locs[:20]:
-            sub, _ = await _sitemap_urls(client, child, depth + 1, limit)
+            sub, _ = await _sitemap_urls(client, child, host, depth + 1, limit)
             out += sub
             if len(out) >= limit:
                 break
@@ -92,13 +126,25 @@ def _looks_like_shell(html: str, word_count: int) -> bool:
 
 async def _scan(base: str, paths: list[str], max_pages: int, concurrency: int) -> dict:
     base = base.rstrip("/")
-    host = urlparse(base).netloc
     limits = httpx.Limits(max_connections=concurrency)
     async with httpx.AsyncClient(follow_redirects=True, timeout=15.0, limits=limits) as client:
-        site: dict = {"base": base, "reachable": True}
+        # Follow the homepage redirect first (example.com -> www.example.com, http -> https),
+        # so every later URL is built on the address the site actually serves.
+        given = base
+        home = await _get(client, base + "/", BROWSER_UA)
+        if home.get("status") is not None and home.get("final_url"):
+            fu = urlparse(home["final_url"])
+            gp = urlparse(base)
+            if site_host(fu.netloc) == site_host(gp.netloc):
+                base = f"{fu.scheme}://{fu.netloc}{gp.path}".rstrip("/")
+        parsed = urlparse(base)
+        host = site_host(parsed.netloc)
+        origin = f"{parsed.scheme}://{parsed.netloc}"
+        prefix = parsed.path.rstrip("/")            # e.g. "/repo" for user.github.io/repo
+        site: dict = {"base": base, "given_url": given, "base_path": prefix, "reachable": True}
 
-        # robots.txt
-        rb = await _get(client, base + "/robots.txt", OWN_UA)
+        # robots.txt always lives at the origin root
+        rb = await _get(client, origin + "/robots.txt", OWN_UA)
         robots_txt = rb["text"] if rb.get("status") == 200 else ""
         site["robots_status"] = rb.get("status")
         site["robots_text"] = robots_txt
@@ -118,13 +164,14 @@ async def _scan(base: str, paths: list[str], max_pages: int, concurrency: int) -
         sm_urls: list[str] = []
         site["sitemaps"] = []
         for sm in sitemaps[:5]:
-            urls, info = await _sitemap_urls(client, sm)
+            urls, info = await _sitemap_urls(client, sm, host)
             info["count"] = len(urls)
             site["sitemaps"].append(info)
             sm_urls += urls
-        site["sitemap_paths"] = sorted({_norm(u) for u in sm_urls if urlparse(u).netloc in (host, "")})
-        foreign = sorted({urlparse(u).netloc for u in sm_urls if urlparse(u).netloc not in (host, "")})
-        site["sitemap_foreign_hosts"] = foreign
+        ours = [u for u in sm_urls if site_host(urlparse(u).netloc) in (host, "")]
+        site["sitemap_paths"] = sorted({_rel(urlparse(u).path, prefix) for u in ours})
+        site["sitemap_foreign_hosts"] = sorted({urlparse(u).netloc for u in sm_urls
+                                                if site_host(urlparse(u).netloc) not in (host, "")})
 
         # homepage first, then code routes, then sitemap, then discovered links
         queue: list[str] = ["/"]
@@ -147,11 +194,22 @@ async def _scan(base: str, paths: list[str], max_pages: int, concurrency: int) -
                 facts["error"] = res["error"]
             if res.get("status") == 200 and res["text"]:
                 facts.update(analyze_html(res["text"], url))
+                # links and canonical as site-relative paths (handles www/apex and /repo base paths)
+                rel_links = []
+                for link in facts.get("links", []):
+                    rl = _rel(link, prefix)
+                    if rl not in rel_links:
+                        rel_links.append(rl)
+                facts["links"] = rel_links
+                if facts.get("canonical"):
+                    cu = urlparse(facts["canonical"])
+                    facts["canonical_path"] = _rel(cu.path, prefix)
+                    facts["canonical_other_host"] = bool(cu.netloc) and site_host(cu.netloc) != host
                 low = res["text"][:20000].lower()
                 facts["_markers"] = [m for m in CHALLENGE_MARKERS if m.lower() in low]
                 facts["empty_without_js"] = _looks_like_shell(res["text"], facts["word_count"])
                 final = urlparse(res.get("final_url") or url)
-                if final.netloc and final.netloc != host:
+                if final.netloc and site_host(final.netloc) != host:
                     facts["redirected_off_host"] = final.netloc
             pages[path] = facts
 

@@ -13,6 +13,9 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 
+MAX_CSV_BYTES = 50_000_000
+
+
 def _num(v: str) -> float:
     v = (v or "").strip().replace(",", "").replace("%", "")
     try:
@@ -43,15 +46,20 @@ def load(inputs_dir: Path) -> dict | None:
     if not inputs_dir.is_dir():
         return None
     texts: list[tuple[str, str]] = []
+    skipped: list[str] = []
     for f in sorted(inputs_dir.iterdir()):
         if f.suffix.lower() == ".zip":
-            with zipfile.ZipFile(f) as z:
-                for n in z.namelist():
-                    if n.lower().endswith(".csv"):
-                        texts.append((f"{f.name}:{n}", z.read(n).decode("utf-8", errors="ignore")))
-        elif f.suffix.lower() == ".csv":
+            try:
+                with zipfile.ZipFile(f) as z:
+                    for info in z.infolist():
+                        if info.filename.lower().endswith(".csv") and info.file_size <= MAX_CSV_BYTES:
+                            texts.append((f"{f.name}:{info.filename}", z.read(info).decode("utf-8", errors="ignore")))
+            except (zipfile.BadZipFile, OSError):
+                skipped.append(f.name)      # broken or half-downloaded export: skip it, don't crash
+                continue
+        elif f.suffix.lower() == ".csv" and f.stat().st_size <= MAX_CSV_BYTES:
             texts.append((f.name, f.read_text(encoding="utf-8", errors="ignore")))
-    out: dict = {"pages": [], "queries": [], "files": []}
+    out: dict = {"pages": [], "queries": [], "files": [], "skipped": skipped}
     for name, text in texts:
         headers, rows = _rows(text)
         kind = _classify(headers)

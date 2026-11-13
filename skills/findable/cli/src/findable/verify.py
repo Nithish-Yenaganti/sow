@@ -16,6 +16,8 @@ from findable.scan_live import scan_live
 from findable.suggest import suggestions
 
 LIVE_SOURCES = {"live", "code+live"}
+# Findings that compare many pages: a partial re-check (verify) can't prove them fixed.
+CROSS_PAGE_RULES = {"seo.title_duplicate", "seo.description_duplicate", "seo.sitemap_dead", "seo.orphan"}
 
 
 def collect(root: Path, app: App, url: str | None, max_pages: int = 50,
@@ -33,24 +35,30 @@ def collect(root: Path, app: App, url: str | None, max_pages: int = 50,
     return {"code": code, "live": live, "gsc": gsc, "findings": findings, "live_ok": live_ok, "pages": len(pages)}
 
 
+def not_checked_reason(rec: dict, live_ok: bool, gsc: bool, partial: bool,
+                       only_paths: list[str] | None = None) -> str | None:
+    """Why this run can't mark the finding fixed, or None if it re-checked it."""
+    src = rec.get("source", "code")
+    if src in LIVE_SOURCES and not live_ok:
+        return "needs the live site (no reachable URL this run)"
+    if src == "gsc" and not gsc:
+        return "needs the Search Console export"
+    if partial and rec.get("rule") in CROSS_PAGE_RULES:
+        return "compares many pages; confirmed on the next full `findable scan`"
+    if only_paths is not None and rec.get("url") not in set(only_paths) | {"site"}:
+        return "page not re-checked this run"
+    return None
+
+
 def fixable_scope(store: dict, app_root: str, live_ok: bool, gsc: bool, only_paths: list[str] | None = None) -> set[str]:
-    """Fingerprints this run is allowed to mark as fixed (only what it actually re-checked)."""
-    scope = set()
-    for fp, rec in store.items():
-        if rec.get("app", app_root) != app_root:
-            continue
-        src = rec.get("source", "code")
-        if src in LIVE_SOURCES and not live_ok:
-            continue
-        if src == "gsc" and not gsc:
-            continue
-        if only_paths is not None and rec.get("url") not in set(only_paths) | {"site"}:
-            continue
-        scope.add(fp)
-    return scope
+    """Store keys this run is allowed to mark as fixed (only what it actually re-checked)."""
+    partial = only_paths is not None
+    return {fp for fp, rec in store.items()
+            if rec.get("app", ".") == app_root and not_checked_reason(rec, live_ok, gsc, partial, only_paths) is None}
 
 
-def verify_targets(store: dict, fingerprints: list[str] | None) -> list[str]:
+def verify_targets(store: dict, fingerprints: list[str] | None, app_root: str = ".") -> list[str]:
     if fingerprints:
         return [fp for fp in fingerprints if fp in store]
-    return [fp for fp, r in store.items() if r.get("status") in ("new", "open", "regressed") and r.get("who") != "user"]
+    return [fp for fp, r in store.items() if r.get("status") in ("new", "open", "regressed")
+            and r.get("who") != "user" and r.get("app", ".") == app_root]

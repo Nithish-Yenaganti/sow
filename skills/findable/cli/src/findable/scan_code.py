@@ -65,13 +65,16 @@ def analyze_html(html: str, page_url: str = "/") -> dict:
         alt = img.attributes.get("alt")
         if alt is None:
             facts["images_no_alt"].append(img.attributes.get("src") or "(no src)")
-    host = urlparse(page_url).netloc
+    def _h(netloc: str) -> str:
+        n = netloc.lower()
+        return n[4:] if n.startswith("www.") else n
+    host = _h(urlparse(page_url).netloc)
     for a in tree.css("a[href]"):
         href = a.attributes.get("href") or ""
         if href.startswith(("mailto:", "tel:", "javascript:", "#")):
             continue
         absu = urlparse(urljoin(page_url if page_url.startswith("http") else "http://x" + page_url, href))
-        if absu.netloc in (host, "x", ""):
+        if _h(absu.netloc) in (host, "x", ""):
             path = absu.path.rstrip("/") or "/"
             if path not in facts["links"]:
                 facts["links"].append(path)
@@ -102,10 +105,25 @@ HAS_METADATA = re.compile(r"export\s+(?:const\s+metadata\b|(?:async\s+)?function
 TITLE_RE = re.compile(r"(?:\btitle\s*:|<title[\s>])")
 DESC_RE = re.compile(r"""(?:\bdescription\s*:|name=["']description["'])""")
 CANON_RE = re.compile(r"\bcanonical\s*:|rel=[\"']canonical")
-NOINDEX_RE = re.compile(r"\bindex\s*:\s*false|noindex")
+NOINDEX_RE = re.compile(r"""\bindex\s*:\s*false\b|['"`][^'"`\n]*\bnoindex\b""")   # robots option or a string value
+COMMENT_RE = re.compile(r"""/\*.*?\*/|(?<![:'"\w])//[^\n]*""", re.S)   # keeps "https://…"
+META_SPAN = 4000    # chars after `export const metadata` / generateMetadata searched for title etc.
 LD_RE = re.compile(r"application/ld\+json")
 IMG_TAG = re.compile(r"<(img|Image)\b([^>]*)>", re.S)
 H1_RE = re.compile(r"<h1[\s>]")
+
+
+def _strip_comments(text: str) -> str:
+    # Replace comments with same-length blanks so line numbers stay right.
+    return COMMENT_RE.sub(lambda m: re.sub(r"[^\n]", " ", m.group(0)), text)
+
+
+def _meta_text(text: str) -> str:
+    """The part of a file that defines page metadata: the metadata export / generateMetadata,
+    plus <title>/<meta> tags (next/head). `title:` elsewhere (e.g. a list of cards) doesn't count."""
+    parts = [text[m.start(): m.start() + META_SPAN] for m in HAS_METADATA.finditer(text)]
+    parts += re.findall(r"<(?:title|meta|link)\b[^>]*>", text)
+    return "\n".join(parts)
 
 
 def _line_of(text: str, idx: int) -> int:
@@ -133,17 +151,19 @@ def _layout_chain(project_root: Path, page_file: Path) -> list[Path]:
 
 def _next_page_facts(project_root: Path, rel_file: str) -> dict:
     f = project_root / rel_file
-    text = f.read_text(encoding="utf-8", errors="ignore")
+    text = _strip_comments(f.read_text(encoding="utf-8", errors="ignore"))
+    meta = _meta_text(text)
     layouts = [l for l in _layout_chain(project_root, f) if l != f]
-    layout_texts = {str(l.relative_to(project_root)): l.read_text(encoding="utf-8", errors="ignore") for l in layouts}
+    layout_texts = {str(l.relative_to(project_root)): _meta_text(_strip_comments(l.read_text(encoding="utf-8", errors="ignore")))
+                    for l in layouts}
     own_meta = bool(HAS_METADATA.search(text)) or "next/head" in text
     facts: dict = {
         "client_rendered": bool(USE_CLIENT.search(text)),
         "own_metadata": own_meta,
-        "title": "present" if TITLE_RE.search(text) else None,
-        "description": "present" if DESC_RE.search(text) else None,
-        "canonical": "present" if CANON_RE.search(text) else None,
-        "noindex": bool(NOINDEX_RE.search(text)),
+        "title": "present" if TITLE_RE.search(meta) else None,
+        "description": "present" if DESC_RE.search(meta) else None,
+        "canonical": "present" if CANON_RE.search(meta) else None,
+        "noindex": bool(NOINDEX_RE.search(meta)),
         "ld_types": ["(in code)"] if LD_RE.search(text) else [],
         "ld_errors": [], "links": [], "questions_without_answer": [],
         "h1_count": len(H1_RE.findall(text)),

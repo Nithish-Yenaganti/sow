@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 import httpx
+from urllib.parse import urlparse
 
 from findable.detect import App, app_at
 
@@ -67,6 +68,24 @@ class Resolution:
     url: str | None = None          # None = code scan only
     questions: list[Question] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
+
+
+NO_URL = ("", "none", "code")
+
+
+def normalize_url(value: str) -> tuple[str | None, str | None]:
+    """--url value -> (url or None for code-only, error message or None)."""
+    v = (value or "").strip()
+    if v.lower() in NO_URL:
+        return None, None
+    if v.lower() == "ask":
+        return None, "Ask the user for the production URL, then re-run with --url https://…"
+    if "://" not in v:
+        v = "https://" + v                      # "example.com" -> "https://example.com"
+    pu = urlparse(v)
+    if pu.scheme not in ("http", "https") or not pu.netloc or " " in v:
+        return None, f"'{value}' is not a valid http(s) URL."
+    return v.rstrip("/"), None
 
 
 def reachable(url: str, timeout: float = 3.0) -> bool:
@@ -130,14 +149,22 @@ def resolve(root: Path, apps: list[App], app_arg: str | None, url_arg: str | Non
 
     # ---- Q2: which URL -------------------------------------------------------
     if url_arg is not None:
-        res.url = None if url_arg in ("", "none", "code") else url_arg.rstrip("/")
+        res.url, err = normalize_url(url_arg)
+        if err:
+            res.app = None
+            res.notes.append(err)
         return res
     if "url" in cfg and cfg.get("app") == chosen:
         remembered = cfg["url"]
-        if remembered is None or check(remembered):
-            res.url = remembered
+        if remembered is None and cfg.get("code_only"):
+            res.notes.append("Code scan only (you chose this before; pass --url to scan the live site).")
             return res
-        res.notes.append(f"Remembered URL {remembered} is not reachable; asking again.")
+        if remembered and check(remembered):
+            res.url = remembered
+            res.notes.append(f"Using the remembered URL {remembered} (from .findable/config.json).")
+            return res
+        if remembered:
+            res.notes.append(f"Remembered URL {remembered} is not reachable; asking again.")
 
     app = res.app
     local = f"http://localhost:{app.dev_port}" if app.dev_port else None
@@ -175,9 +202,12 @@ def resolve(root: Path, apps: list[App], app_arg: str | None, url_arg: str | Non
     return res
 
 
-def remember(root: Path, app: App | None, url: str | None) -> None:
+def remember(root: Path, app: App | None, url: str | None, url_arg: str | None = None) -> None:
+    """Save the answers. Code-only is remembered only when the user chose it (--url none);
+    otherwise the next run looks for a URL again (a dev server may be running by then)."""
     cfg = load_config(root)
     if app is not None:
         cfg["app"] = app.root
     cfg["url"] = url
+    cfg["code_only"] = url is None and url_arg is not None and url_arg.strip().lower() in NO_URL
     save_config(root, cfg)

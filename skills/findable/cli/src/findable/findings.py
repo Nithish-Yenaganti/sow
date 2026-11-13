@@ -4,7 +4,8 @@
      │        │
      └────────┴──► dismissed   (user gave a reason; never re-raised)
 
-Identity = fingerprint "rule|url".
+Identity = fingerprint "rule|url", prefixed with the app folder in monorepos
+("apps/web::rule|url") so the same issue in two apps stays two findings.
 """
 
 from __future__ import annotations
@@ -20,6 +21,10 @@ ACTIVE = {"new", "open", "regressed"}
 
 def _now() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def key(app_root: str, fingerprint: str) -> str:
+    return fingerprint if app_root in ("", ".") else f"{app_root}::{fingerprint}"
 
 
 def store_path(root: Path) -> Path:
@@ -46,13 +51,14 @@ def _transition(rec: dict, to: str, why: str) -> None:
     rec["status"] = to
 
 
-def apply_run(store: dict[str, dict], current: list[Finding], scope: set[str] | None = None) -> dict:
-    """Update the store with this run's findings. `scope` limits which fingerprints
-    may be marked fixed (used by verify, which only re-checks some pages)."""
+def apply_run(store: dict[str, dict], current: list[Finding], scope: set[str] | None = None,
+              app: str = ".") -> dict:
+    """Update the store with this run's findings for `app`. `scope` limits which store keys
+    may be marked fixed (only what this run actually re-checked)."""
     seen = set()
     delta = {"new": [], "fixed": [], "regressed": [], "open": []}
     for f in current:
-        fp = f.fingerprint
+        fp = key(app, f.fingerprint)
         seen.add(fp)
         data = f.to_dict()
         rec = store.get(fp)
@@ -73,9 +79,11 @@ def apply_run(store: dict[str, dict], current: list[Finding], scope: set[str] | 
         elif rec["status"] == "open":
             delta["open"].append(fp)
         rec.update({k: v for k, v in data.items() if k not in ("status", "history", "first_seen")})
+        rec["fingerprint"] = fp
+        rec["app"] = app
         rec["last_seen"] = _now()
     for fp, rec in store.items():
-        if fp in seen or rec["status"] not in ACTIVE:
+        if fp in seen or rec["status"] not in ACTIVE or rec.get("app", ".") != app:
             continue
         if scope is not None and fp not in scope:
             continue

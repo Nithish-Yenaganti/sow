@@ -7,10 +7,18 @@ page-level facts; the code scan supplies file locations and code-only facts.
 
 from __future__ import annotations
 
+import re
 from collections import defaultdict
 from dataclasses import asdict, dataclass, field
 
 SEVERITY_RANK = {"critical": 0, "high": 1, "medium": 2, "low": 3}
+MAX_TEXT = 300      # site-derived text (titles, descriptions, headings) is untrusted: keep it short
+_CTRL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f\u200b-\u200f\u202a-\u202e\u2066-\u2069]")
+
+
+def _clean(s: str) -> str:
+    s = _CTRL.sub("", " ".join(str(s).split()))
+    return s if len(s) <= MAX_TEXT else s[: MAX_TEXT - 1] + "…"
 
 
 @dataclass
@@ -29,6 +37,10 @@ class Finding:
     fix: str = ""                 # playbook anchor, e.g. "nextjs.md#client-rendered"
     fix_options: list[dict] = field(default_factory=list)   # Q4 variants, first = recommended
     auto_fixable: bool = False
+
+    def __post_init__(self) -> None:
+        for k in ("title", "current", "target", "evidence"):
+            setattr(self, k, _clean(getattr(self, k)))
 
     @property
     def fingerprint(self) -> str:
@@ -95,8 +107,8 @@ def evaluate(code: dict, live: dict | None, gsc: dict | None) -> list[Finding]:
                                  fix=_playbook(fw, "canonical"), auto_fixable=True))
             else:
                 from urllib.parse import urlparse
-                cpath = urlparse(canon).path.rstrip("/") or "/"
-                if cpath != path:
+                cpath = l.get("canonical_path") or urlparse(canon).path.rstrip("/") or "/"
+                if cpath != path or l.get("canonical_other_host"):
                     F.append(Finding("seo.canonical_mismatch", path, f"{path} canonical points to {cpath}", canon,
                                      f"self-referencing canonical ({path}) unless this page is a deliberate duplicate",
                                      "high", "SEO", file=file, source=src,
@@ -362,18 +374,11 @@ def _site_rules(F: list[Finding], cs: dict, ls: dict | None, pages: dict, fw: st
 
 
 def _disallows_all(text: str) -> bool:
-    agent_star = False
-    for raw in text.splitlines():
-        line = raw.split("#", 1)[0].strip()
-        if not line or ":" not in line:
-            continue
-        k, v = (x.strip() for x in line.split(":", 1))
-        k = k.lower()
-        if k == "user-agent":
-            agent_star = v == "*"
-        elif k == "disallow" and agent_star and v == "/":
-            return True
-    return False
+    """True if a crawler with no rules of its own may not fetch the homepage or a normal page."""
+    from protego import Protego
+    rp = Protego.parse(text)
+    ua = "SomeSearchBot"     # falls under the `User-agent: *` group, grouped UA lines included
+    return not rp.can_fetch("https://site.invalid/", ua) and not rp.can_fetch("https://site.invalid/about", ua)
 
 
 def _gsc_rules(F: list[Finding], gsc: dict, existing: list[Finding], pages: dict) -> None:

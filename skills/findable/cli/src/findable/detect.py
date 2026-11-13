@@ -63,7 +63,8 @@ def _read_json(p: Path) -> dict:
 
 def _deps(pkg: dict) -> set[str]:
     out: set[str] = set()
-    for k in ("dependencies", "devDependencies", "peerDependencies"):
+    # peerDependencies are left out: a shared UI package that peers on `next` is not a site.
+    for k in ("dependencies", "devDependencies"):
         out |= set((pkg.get(k) or {}).keys())
     return out
 
