@@ -7,7 +7,9 @@ description: Check and fix whether Google and AI engines (ChatGPT, Perplexity, C
 
 One job: **can Google and AI engines find, read and cite this site, and what blocks it?**
 
-The `findable` CLI does the scanning. You do three things: ask the user when there's a real choice, apply the fixes they pick, and explain the results plainly. Follow `references/safety.md` at all times.
+The flow: ask only what's needed → scan → explain the results in plain language → ask permission → preview the changes → fix → check. Nothing in the project changes without the user's yes.
+
+The `findable` CLI does the scanning. You ask the user when there's a real choice, explain the results plainly, and fix only what the user approves. Follow `references/safety.md` at all times.
 
 ## Running the CLI
 
@@ -39,38 +41,58 @@ Two special answers:
 
 Never pick an option yourself when the CLI asked.
 
-### 2. Report
-Summarise in at most 6 lines:
-- the site and which sources were scanned
-- open counts by severity
-- fixed / regressed / new since the last run
-- the top 3 `do_first` items, each tagged **you** (`who: user`) or **auto-fix**
-- the path to `.findable/report.html`
+### 2. Report (plain language, no fixing yet)
+Scanning and reporting never change anything. Write for someone who isn't technical:
 
-Use the finding's own `title`, `current`, `target` and `evidence`. Don't add vague advice. For any finding the user asks about, explain *why it matters* in one or two sentences from `references/checks.md`.
+1. One line: the site, how many pages were checked, and whether the live site was included.
+2. One line: how many things can be improved, and how many are important.
+3. Then the findings grouped by `group`, using each group's question as a heading:
+   - **Can Google and AI find your pages?** (`find`)
+   - **Can AI tools read your pages?** (`read`)
+   - **How you show up in results** (`show`)
+   - **Things only you can do** (`you`)
+   Under each heading, list up to 3 findings using their `plain` sentence, most important first. Add "and N more in the report" if there are more.
+4. The path to `.findable/report.html` for the full details.
 
-Then list the **user steps** (`who: user`): each one with its exact steps from the file named in `fix` (`suggestions.md#…` or `playbooks/cdn.md`). You can't do these for the user.
+Use the `plain` sentences as written. Don't add jargon (canonical, JSON-LD, robots directives) unless the user asks for details; then explain using `title`, `current`, `target`, `evidence` and `references/checks.md`.
 
-### 3. Choose fixes
-Ask which findings to fix, as a multi-select. Offer only `auto_fixable` ones, with critical/high pre-recommended. At most 10 options, plus "All recommended".
+### 3. Ask permission (one question)
+If nothing in the site needs fixing, skip to the user steps. Otherwise ask once:
 
-For each chosen finding with `fix_options`, ask which variant (recommended first), unless there is only one.
+> Should I fix these for you?
+> - **Yes, fix everything I can** (Recommended)
+> - **Let me choose**: then show a multi-select of the fixable findings (`plain` sentence as the label, important ones first, at most 10)
+> - **No, just the report**: stop here, after listing the user steps.
 
-Also ask when a fix conflicts with something already in the repo, e.g. an existing sitemap generator or an SEO plugin: patch the existing one (recommended) or replace it.
+Never change a file before the user answers. Only findings with `who: agent` can be fixed.
 
-### 4. Fix
-For each chosen finding:
+### 4. Preview what will change (one approval)
+Before editing, show **one** preview of the chosen fixes, grouped by `change_kind`:
+- **changes your words** (`text`): the exact new titles, descriptions and answers, written from the page's real content. Never invent facts, prices or claims.
+- **changes who can visit or index your site** (`access`): the exact robots.txt or noindex change, in one plain sentence each.
+- **changes how the page is built** (`structure`): one plain sentence per page on what will move.
+- **behind-the-scenes fixes** (`technical`): a short list only.
+
+Use the recommended `fix_options` variant by default and say which one in the preview. For `geo.robots_ai` say plainly: "AI search tools will be allowed; AI training crawlers stay blocked." Then ask: **Apply these changes?** (Yes / Change something / Cancel). If the user changes something, update the preview and ask again.
+
+Also mention it in the preview when a fix touches something already in the repo, such as an existing sitemap generator or SEO plugin, and that you'll extend it rather than replace it.
+
+### 5. Fix
+For each approved finding:
 1. Open the file in `file`. Read the playbook section in `fix` (`playbooks/nextjs.md` for Next.js, otherwise `playbooks/generic.md`, adapted to the framework).
-2. Make the smallest change that reaches `target`, in the project's existing style.
-3. **Content changes** (titles, descriptions, answer-first paragraphs, FAQ text): write them from the page's real content. Show them to the user before applying, because they change the user's voice. Never invent facts, prices or claims.
-4. Never commit, push or deploy. Leave the changes in the working tree and show the diff summary.
+2. Make the smallest change that reaches `target`, in the project's existing style. Apply exactly what the preview showed.
+3. Never commit, push or deploy. Leave the changes in the working tree.
 
-### 5. Verify
-Run `findable verify --json --ids <fingerprints of what you fixed>`, adding `--url http://localhost:PORT` if a dev server is running.
-- `fixed` ✓ · `still failing` → fix again, at most 2 more tries, then report what's left and why
-- `not re-checked` → tell the user it gets confirmed after deploy, on the next `findable scan`
+### 6. Check and finish
+Run `findable verify --json --ids <fingerprints you fixed>`, adding `--url http://localhost:PORT` if a dev server is running.
+- `fixed`: done. `still failing`: try again, at most 2 more times, then explain what's left in plain words.
+- `not re-checked`: say it will be confirmed on the next scan after you deploy.
 
-Finish with: what changed (files), what's verified, what the user must do (deploy, user steps), and "Run `/findable` after deploying to confirm on production."
+Finish with two short lists:
+- **Fixed ✓**: each fix as a plain sentence, with the file it changed.
+- **You need to do**: deploy, then each `who: user` step with its exact steps from the file named in `fix` (`suggestions.md#…` or `playbooks/cdn.md`).
+
+End with: "Run `/findable` again after deploying to confirm everything on your live site."
 
 ## Other commands
 - `findable report --json`: latest results without re-scanning

@@ -48,7 +48,11 @@ h2 { font-size: 17px; margin: 34px 0 10px; }
 .f { border-top: 1px solid var(--line); padding: 10px 0 4px; }
 .f:first-of-type { border-top: 0; padding-top: 0; }
 .f .t { font-weight: 600; }
-.f .t .pill { font-size: 11px; padding: 1px 8px; margin-right: 6px; vertical-align: 1px; }
+.f .t .pill { font-size: 11px; padding: 1px 8px; margin-right: 8px; vertical-align: 1px; }
+.f .who { margin: 2px 0 0; display: block; }
+h2 .n { color: var(--muted); font-weight: 500; font-size: 14px; margin-left: 6px; }
+details { margin-top: 6px; }
+summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
 .grid { display: grid; grid-template-columns: 90px 1fr; gap: 2px 10px; margin-top: 6px; font-size: 13.5px; }
 .grid dt { color: var(--muted); }
 .grid dd { margin: 0; word-break: break-word; }
@@ -68,51 +72,45 @@ footer { color: var(--muted); font-size: 12px; margin-top: 40px; }
     <strong>{{ run.url or (run.name or run.app) ~ " (code only)" }}</strong> · {{ run.framework }} · {{ run.pages }} pages · {{ generated }}
   </div>
   <div class="meta sources">
-    <span>Code ✓</span>
-    <span>Live {{ "✓" if run.live_ok else "— skipped" }}</span>
-    <span>Search Console CSV {{ "✓" if run.gsc else "— not provided" }}</span>
+    <span>Checked: your code ✓</span>
+    <span>live site {{ "✓" if run.live_ok else "— not checked" }}</span>
+    <span>Search Console data {{ "✓" if run.gsc else "— not added" }}</span>
   </div>
   <div class="counts">
-    {% for s, n in counts.items() if n %}<span class="pill {{ s }}">{{ n }} {{ s }}</span>{% endfor %}
-    {% if not items %}<span class="pill okpill">All checks pass</span>{% endif %}
+    {% set imp = counts.critical + counts.high %}
+    {% if imp %}<span class="pill critical">{{ imp }} important</span>{% endif %}
+    {% if counts.medium %}<span class="pill medium">{{ counts.medium }} worth fixing</span>{% endif %}
+    {% if counts.low %}<span class="pill low">{{ counts.low }} minor</span>{% endif %}
+    {% if not items %}<span class="pill okpill">Everything looks good</span>{% endif %}
     {% if run.previous_run %}
-      <span class="pill okpill">{{ delta.fixed|length }} fixed</span>
-      {% if delta.regressed %}<span class="pill critical">{{ delta.regressed|length }} regressed</span>{% endif %}
-      <span class="pill low">{{ delta.new|length }} new</span>
+      <span class="pill okpill">{{ delta.fixed|length }} fixed since last time</span>
+      {% if delta.regressed %}<span class="pill critical">{{ delta.regressed|length }} came back</span>{% endif %}
     {% endif %}
   </div>
 </header>
 
-{% if top %}
-<h2>Do these first</h2>
-<div class="card do"><ol>
-  {% for r in top %}
-  <li><span class="pill {{ r.severity }}">{{ r.severity }}</span> {{ r.title }}
-    <span class="who">{{ "you" if r.who == "user" else ("auto-fix" if r.auto_fixable else "agent") }}</span>
-    {% if r.status == "regressed" %}<span class="status regressed">regressed</span>{% endif %}</li>
-  {% endfor %}
-</ol></div>
-{% endif %}
-
-<h2>Findings by page</h2>
-{% for url, fs in pages %}
-<section class="card page">
-  <h3>{{ "Site-wide" if url == "site" else url }}</h3>
+{% for gid, label, fs in groups %}
+<h2>{{ label }} <span class="n">{{ fs|length }}</span></h2>
+<section class="card">
   {% for r in fs %}
   <div class="f">
-    <div class="t"><span class="pill {{ r.severity }}">{{ r.severity }}</span>{{ r.title }}
-      <span class="status {{ r.status }}">{{ r.status }}</span>
-      <span class="who">{{ r.pillar }} · {{ "you" if r.who == "user" else ("auto-fix" if r.auto_fixable else "agent") }}</span></div>
-    <dl class="grid">
-      {% if r.file %}<dt>File</dt><dd><code>{{ r.file }}</code></dd>{% endif %}
-      <dt>Now</dt><dd>{{ r.current }}</dd>
-      <dt>Target</dt><dd>{{ r.target }}</dd>
-      {% if r.evidence %}<dt>Why</dt><dd>{{ r.evidence }}</dd>{% endif %}
-      {% if r.fix %}<dt>Fix</dt><dd><code>{{ r.fix }}</code>
-        {% if r.fix_options %}<ul class="options">{% for o in r.fix_options %}<li>{{ o.label }}{% if o.recommended %} <em>(recommended)</em>{% endif %}</li>{% endfor %}</ul>{% endif %}
-      </dd>{% endif %}
-      <dt>Source</dt><dd>{{ r.source }} · <code>{{ r.fingerprint }}</code></dd>
-    </dl>
+    <div class="t">{% if gid != "you" %}<span class="pill {{ r.severity }}">{{ "important" if r.severity in ("critical", "high") else ("worth fixing" if r.severity == "medium" else "minor") }}</span>{% endif %}{{ r.plain or r.title }}
+      {% if r.status == "regressed" %}<span class="status regressed">came back</span>{% endif %}</div>
+    <div class="who">{{ "You do this" if r.who == "user" else change_label.get(r.change_kind, "") }}{% if r.url not in ("site", "/") %} · <code>{{ r.url }}</code>{% endif %}</div>
+    <details>
+      <summary>Technical details</summary>
+      <dl class="grid">
+        <dt>Issue</dt><dd>{{ r.title }}</dd>
+        {% if r.file %}<dt>File</dt><dd><code>{{ r.file }}</code></dd>{% endif %}
+        <dt>Now</dt><dd>{{ r.current }}</dd>
+        <dt>Target</dt><dd>{{ r.target }}</dd>
+        {% if r.evidence %}<dt>Why</dt><dd>{{ r.evidence }}</dd>{% endif %}
+        {% if r.fix %}<dt>Fix</dt><dd><code>{{ r.fix }}</code>
+          {% if r.fix_options %}<ul class="options">{% for o in r.fix_options %}<li>{{ o.label }}{% if o.recommended %} <em>(recommended)</em>{% endif %}</li>{% endfor %}</ul>{% endif %}
+        </dd>{% endif %}
+        <dt>ID</dt><dd><code>{{ r.fingerprint }}</code></dd>
+      </dl>
+    </details>
   </div>
   {% endfor %}
 </section>

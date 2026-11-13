@@ -47,8 +47,10 @@ class Finding:
         return f"{self.rule}|{self.url}"
 
     def to_dict(self) -> dict:
+        from findable.plain import describe
         d = asdict(self)
         d["fingerprint"] = self.fingerprint
+        d.update(describe(self.rule, self.url, self.who))
         return d
 
 

@@ -1,6 +1,6 @@
 # Safety rules (always apply)
 
-1. **Never commit, push, merge or deploy.** Leave changes in the working tree for the user to review.
+1. **Never change a file without permission.** Scanning and reporting never edit anything. Fix only after the user says yes and approves the preview. Never commit, push, merge or deploy; leave changes in the working tree.
 2. **Never sign in, submit forms, or change settings** in Search Console, Bing Webmaster, CDN/WAF dashboards (Cloudflare, Vercel, Netlify), DNS, or analytics. Give the user the exact steps instead.
 3. **Never pick between options for the user** when the CLI or this skill says to ask.
 4. **Never invent content facts.** Titles, descriptions, FAQ answers and schema values come from the page's real content and the repo. If a value is unknown (logo URL, social profiles, prices), ask or leave it out.
