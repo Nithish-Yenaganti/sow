@@ -173,3 +173,52 @@ def test_plain_summary_is_grouped():
                    {"fixed": [], "regressed": [], "new": [], "open": []}, ".findable/report.html")
     assert "How you show up in results" in out and "Things only you can do" in out
     assert "The page /pricing has no title" in out and "Found 1 thing to improve (1 important)." in out
+
+
+class SlashHandler(BaseHTTPRequestHandler):
+    """Sitemap URLs end in '/', the no-slash form redirects; /chat leaves the site."""
+
+    def log_message(self, *a):
+        pass
+
+    def do_GET(self):
+        origin = f"http://{self.headers['Host']}"
+        if self.path == "/sitemap.xml":
+            body = ('<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">'
+                    f"<url><loc>{origin}/</loc></url><url><loc>{origin}/docs/</loc></url></urlset>")
+            return self._send(200, body, "application/xml")
+        if self.path == "/docs":
+            return self._redirect(f"{origin}/docs/")
+        if self.path == "/chat":
+            port = self.server.server_port                             # "localhost" is another host than 127.0.0.1
+            return self._redirect(f"http://localhost:{port}/")
+        if self.path in ("/", "/docs/"):
+            return self._send(200, f'<html><head><title>Widgets docs and guides here</title></head><body><h1>x</h1>'
+                                   f'<img src="/a.png" alt><a href="/docs/">d</a><a href="/chat">c</a><p>{WORDS}</p></body></html>', "text/html")
+        return self._send(404, "nope", "text/plain")
+
+    def _send(self, code, body, ctype):
+        self.send_response(code)
+        self.send_header("Content-Type", ctype)
+        self.end_headers()
+        self.wfile.write(body.encode())
+
+    def _redirect(self, to):
+        self.send_response(301)
+        self.send_header("Location", to)
+        self.end_headers()
+
+
+def test_no_self_made_redirects_and_off_site_pages_ignored():
+    srv = ThreadingHTTPServer(("127.0.0.1", 0), SlashHandler)
+    threading.Thread(target=srv.serve_forever, daemon=True).start()
+    try:
+        live = scan_live(f"http://127.0.0.1:{srv.server_port}", [], max_pages=5, concurrency=2)
+    finally:
+        srv.shutdown()
+    assert live["pages"]["/docs"]["redirects"] == []          # fetched as /docs/, as the sitemap writes it
+    assert live["pages"]["/chat"].get("redirected_off_host")
+    assert "title" not in live["pages"]["/chat"]                # not judged as one of the site's pages
+    code = {"pages": {}, "site": {"framework": "static", "robots": None, "sitemap": None, "orphans": []}}
+    rules = {f.rule for f in evaluate(code, live, None)}
+    assert not rules & {"seo.sitemap_dead", "seo.redirect_chain", "seo.alt"}

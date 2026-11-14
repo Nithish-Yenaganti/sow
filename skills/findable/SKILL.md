@@ -50,9 +50,12 @@ Scanning and reporting never change anything. Write for someone who isn't techni
    - **Can Google and AI find your pages?** (`find`)
    - **Can AI tools read your pages?** (`read`)
    - **How you show up in results** (`show`)
+   - **Do AI answers mention you?** (`cite`): only after an AI visibility check
    - **Things only you can do** (`you`)
    Under each heading, list up to 3 findings using their `plain` sentence, most important first. Add "and N more in the report" if there are more.
 4. The path to `.findable/report.html` for the full details.
+
+**AI visibility (optional, ask first):** if the live site was scanned and no visibility check has been recorded yet (or the user asks "does ChatGPT mention us?"), offer: "Want me to check whether AI answers mention you? I'll run about 5 web searches." On yes, follow `references/ai-visibility.md`, then include its results in this report.
 
 Use the `plain` sentences as written. Don't add jargon (canonical, JSON-LD, robots directives) unless the user asks for details; then explain using `title`, `current`, `target`, `evidence` and `references/checks.md`.
 
@@ -95,6 +98,7 @@ Finish with two short lists:
 End with: "Run `/findable` again after deploying to confirm everything on your live site."
 
 ## Other commands
+- `findable visibility record --file <results.json>`: store AI visibility search results (see `references/ai-visibility.md`); `findable visibility show`: the latest check
 - `findable report --json`: latest results without re-scanning
 - `findable dismiss "<fingerprint>" --reason "<why>"`: when the user says a finding is intentional. Always ask for the reason.
 - Search Console data: if the user wants striking-distance pages, explain `suggestions.md#gsc-export` (they drop the export into `.findable/inputs/`), then re-scan.
@@ -104,6 +108,7 @@ End with: "Run `/findable` again after deploying to confirm everything on your l
 - `references/ai-bots.md`: AI crawler user agents, search vs. training
 - `references/schema.md`: JSON-LD templates
 - `references/aeo-content.md`: answer-first writing
+- `references/ai-visibility.md`: the AI visibility check (web searches) and how to improve misses
 - `references/safety.md`: hard rules
 - `playbooks/nextjs.md`, `playbooks/generic.md`: fix recipes
 - `playbooks/cdn.md`: user steps for CDN/WAF bot blocking

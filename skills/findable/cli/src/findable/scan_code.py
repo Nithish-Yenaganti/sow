@@ -29,7 +29,7 @@ def analyze_html(html: str, page_url: str = "/") -> dict:
         "title": head_title.text(strip=True) if head_title else None,
         "description": None, "canonical": None, "noindex": False,
         "h1_count": 0, "images_no_alt": [], "ld_types": [], "ld_errors": [],
-        "links": [], "word_count": 0, "questions_without_answer": [],
+        "links": [], "link_urls": {}, "word_count": 0, "questions_without_answer": [],
         "has_gsc_verification": False, "has_clarity": False,
     }
     for m in tree.css("meta"):
@@ -62,8 +62,7 @@ def analyze_html(html: str, page_url: str = "/") -> dict:
             facts["has_clarity"] = True
     facts["h1_count"] = len(tree.css("h1"))
     for img in tree.css("img"):
-        alt = img.attributes.get("alt")
-        if alt is None:
+        if "alt" not in img.attributes:        # a bare `alt` / alt="" is valid (decorative image)
             facts["images_no_alt"].append(img.attributes.get("src") or "(no src)")
     def _h(netloc: str) -> str:
         n = netloc.lower()
@@ -78,6 +77,8 @@ def analyze_html(html: str, page_url: str = "/") -> dict:
             path = absu.path.rstrip("/") or "/"
             if path not in facts["links"]:
                 facts["links"].append(path)
+                # the exact URL as linked (keeps a trailing slash, so we don't cause our own redirects)
+                facts["link_urls"][path] = absu._replace(fragment="").geturl()
     # Question headings: is there a direct answer right after?
     for h in tree.css("h2, h3"):
         text = h.text(strip=True)

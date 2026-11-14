@@ -26,7 +26,8 @@ def _plain(r: dict) -> dict:
     """Plain fields for a stored finding (older stores may not have them)."""
     if "plain" in r and r.get("plain"):
         return r
-    return dict(r, **describe(r.get("rule", ""), r.get("url", "site"), r.get("who", "agent")))
+    return dict(r, **describe(r.get("rule", ""), r.get("url", "site"), r.get("who", "agent"),
+                              r.get("title", ""), r.get("current", "")))
 
 
 def grouped(items: list[dict]) -> list[tuple[str, str, list[dict]]]:

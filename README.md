@@ -37,6 +37,10 @@ One install gives you every SOW skill.
 
 Requires [uv](https://docs.astral.sh/uv/getting-started/installation/), which runs the skill's bundled CLI.
 
+## Tested on real sites
+
+findable is checked against 12 real websites (Next.js, Astro, Nuxt, SvelteKit, Hugo, Jekyll, WordPress, MkDocs, plain HTML, a client-rendered app and a CDN-protected site). Every expected result was verified by hand. See [evals/findable/RESULTS.md](evals/findable/RESULTS.md).
+
 ## Use
 
 Ask your agent "check my site's SEO" or "run findable". In Claude Code you can also type `/sow:findable` (or `/findable` if you installed with `npx skills`).

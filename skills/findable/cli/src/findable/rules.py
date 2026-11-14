@@ -50,7 +50,7 @@ class Finding:
         from findable.plain import describe
         d = asdict(self)
         d["fingerprint"] = self.fingerprint
-        d.update(describe(self.rule, self.url, self.who))
+        d.update(describe(self.rule, self.url, self.who, self.title, self.current))
         return d
 
 
@@ -69,7 +69,7 @@ def merge_pages(code: dict, live: dict | None) -> dict[str, dict]:
     return dict(out)
 
 
-def evaluate(code: dict, live: dict | None, gsc: dict | None) -> list[Finding]:
+def evaluate(code: dict, live: dict | None, gsc: dict | None, vis: dict | None = None) -> list[Finding]:
     fw = code["site"].get("framework", "static")
     pages = merge_pages(code, live)
     lsite = (live or {}).get("site", {}) if live else {}
@@ -125,9 +125,11 @@ def evaluate(code: dict, live: dict | None, gsc: dict | None) -> list[Finding]:
                                               {"value": "keep", "label": "Keep noindex and remove it from the sitemap/links"}]))
             _content_rules(F, path, l, file, src, fw)
             if l.get("empty_without_js"):
+                # Critical for pages the site wants found (homepage, sitemap); others may be app/login pages.
+                key_page = path == "/" or path in sitemap_paths or bool(c)
                 F.append(Finding("geo.no_js_view", path, f"{path} is an empty shell without JavaScript",
                                  f"{l.get('word_count', 0)} words in served HTML", "main content in the initial HTML",
-                                 "critical", "GEO", file=file, source=src,
+                                 "critical" if key_page else "medium", "GEO", file=file, source=src,
                                  evidence="most AI crawlers (GPTBot, ClaudeBot, PerplexityBot) don't run JavaScript",
                                  fix=_playbook(fw, "client-rendered"), auto_fixable=True,
                                  fix_options=_render_options(fw)))
@@ -150,7 +152,7 @@ def evaluate(code: dict, live: dict | None, gsc: dict | None) -> list[Finding]:
         elif l and l.get("error"):
             F.append(Finding("seo.status", path, f"{path} failed to load", l["error"], "HTTP 200", "high", "SEO",
                              file=file, source="live"))
-        if l and len(l.get("redirects", [])) > 1:
+        if l and len(l.get("redirects", [])) > 1 and not l.get("redirected_off_host"):
             F.append(Finding("seo.redirect_chain", path, f"{path} redirects {len(l['redirects'])} times",
                              " → ".join(l["redirects"] + [l.get("final_url") or ""]), "a single redirect (or link straight to the final URL)",
                              "low", "SEO", file=file, source="live", fix=_playbook(fw, "redirects")))
@@ -174,6 +176,8 @@ def evaluate(code: dict, live: dict | None, gsc: dict | None) -> list[Finding]:
     _site_rules(F, code["site"], lsite if live_ok else None, pages, fw)
     if gsc:
         _gsc_rules(F, gsc, F, pages)
+    if vis:
+        _visibility_rules(F, vis)
     return sorted(F, key=lambda f: (SEVERITY_RANK[f.severity], 0 if f.who == "user" else 1, f.url, f.rule))
 
 
@@ -381,6 +385,20 @@ def _disallows_all(text: str) -> bool:
     rp = Protego.parse(text)
     ua = "SomeSearchBot"     # falls under the `User-agent: *` group, grouped UA lines included
     return not rp.can_fetch("https://site.invalid/", ua) and not rp.can_fetch("https://site.invalid/about", ua)
+
+
+def _visibility_rules(F: list[Finding], vis: dict) -> None:
+    from findable.visibility import slug
+    when = (vis.get("checked_at") or "")[:10]
+    for r in vis.get("results", []):
+        if r.get("cited"):
+            continue
+        others = ", ".join(r.get("others", [])[:3]) or "other sites"
+        F.append(Finding("geo.ai_not_cited", slug(r["query"]), f'Not in the results for "{r["query"]}"',
+                         f"top results: {others}", "your site among the sources for this question", "medium", "GEO",
+                         source="visibility",
+                         evidence=f"{vis.get('engine', 'web search')} on {when}: {r.get('results', 0)} results, none from {vis.get('site')}",
+                         fix="references/ai-visibility.md#improve"))
 
 
 def _gsc_rules(F: list[Finding], gsc: dict, existing: list[Finding], pages: dict) -> None:

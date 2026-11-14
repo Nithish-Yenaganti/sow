@@ -17,6 +17,7 @@ GROUPS = {
     "find": "Can Google and AI find your pages?",
     "read": "Can AI tools read your pages?",
     "show": "How you show up in results",
+    "cite": "Do AI answers mention you?",
     "you": "Things only you can do",
 }
 
@@ -53,6 +54,7 @@ PLAIN: dict[str, tuple[str, str, str]] = {
     "aeo.schema_invalid": ("show", "The structured facts on {page} are broken, so Google and AI ignore them.", "technical"),
     "seo.striking_distance": ("show", "{page} is almost on Google's first page; a few fixes could push it up.", "text"),
     "seo.striking_queries": ("show", "Some searches show your site on page 2 of Google; a short answer for each could move it up.", "text"),
+    "geo.ai_not_cited": ("cite", "When people ask \u201c{query}\u201d, answers draw on {others}, not your site.", "text"),
     "setup.live_url": ("you", "Only your code was checked. Share your website address to also test the live site.", "none"),
     "setup.live_unreachable": ("you", "Your website couldn't be reached, so the live checks were skipped.", "none"),
     "setup.gsc_csv": ("you", "Optional: add a Google Search Console export to find pages that are close to page one.", "none"),
@@ -69,8 +71,12 @@ CHANGE_LABEL = {
 }
 
 
-def describe(rule: str, url: str, who: str) -> dict:
+def describe(rule: str, url: str, who: str, title: str = "", current: str = "") -> dict:
     group, sentence, kind = PLAIN.get(rule, ("show", "", "technical"))
+    if rule == "geo.ai_not_cited":
+        query = title.split('"')[1] if title.count('"') >= 2 else url
+        others = current.replace("top results: ", "", 1) or "other sites"
+        return {"group": group, "plain": sentence.replace("{query}", query).replace("{others}", others), "change_kind": kind}
     if who == "user":
         group, kind = "you", "none"
     page = "your homepage" if url == "/" else ("your site" if url == "site" else f"the page {url}")

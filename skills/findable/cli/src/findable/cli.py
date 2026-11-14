@@ -62,7 +62,7 @@ def scan(
     data = collect(root, res.app, res.url, max_pages=max_pages)
     store = findings.load(root)
     previous = bool(store)
-    scope = fixable_scope(store, res.app.root, data["live_ok"], bool(data["gsc"]))
+    scope = fixable_scope(store, res.app.root, data["live_ok"], bool(data["gsc"]), vis=bool(data["vis"]))
     current = data["findings"]
     delta = findings.apply_run(store, current, scope, app=res.app.root)
     findings.save(root, store)
@@ -85,6 +85,57 @@ def scan(
         for n in res.notes:
             typer.echo(f"note: {n}")
         typer.echo(report.terminal(run, items, delta, str(rp.relative_to(root))))
+
+
+@app.command(name="visibility")
+def visibility_cmd(
+    action: str = typer.Argument(..., help="record: store web-search results · show: print the latest check"),
+    file: Optional[str] = typer.Option(None, "--file", help="Results JSON written by the agent (for record)"),
+    site: Optional[str] = typer.Option(None, "--site", help="Your production domain (default: found in code or the scanned URL)"),
+    as_json: bool = typer.Option(False, "--json"),
+    path: str = typer.Option("."),
+) -> None:
+    """AI visibility: do search results for your questions include your site?"""
+    from findable import visibility as vis_mod
+    root = _root(path)
+    if action == "show":
+        latest = vis_mod.load(root)
+        if latest is None:
+            typer.echo("No AI visibility check yet.")
+            raise typer.Exit(1)
+        _print_json(latest) if as_json else typer.echo(_vis_text(latest))
+        return
+    if action != "record" or not file:
+        typer.echo("Use: findable visibility record --file results.json   or   findable visibility show")
+        raise typer.Exit(1)
+    site_url = site or _production_url(root)
+    if not site_url:
+        typer.echo("Which domain is yours? Re-run with --site example.com")
+        raise typer.Exit(1)
+    try:
+        latest = vis_mod.record(root, Path(file), site_url)
+    except (OSError, ValueError) as e:
+        typer.echo(f"Could not read the results: {e}")
+        raise typer.Exit(1)
+    _print_json({"status": "ok", "visibility": latest, "next": "run `findable scan` to add these to the report"}) \
+        if as_json else typer.echo(_vis_text(latest) + "\nNext: run `findable scan` to add these to the report.")
+
+
+def _production_url(root: Path) -> str | None:
+    cfg = ask.load_config(root)
+    app_obj = {a.root: a for a in detect(root)}.get(cfg.get("app", "")) or (app_at(root, cfg["app"]) if cfg.get("app") else None)
+    if app_obj and app_obj.site_urls:
+        return app_obj.site_urls[0]
+    url = cfg.get("url") or ""
+    return url if url and not any(h in url for h in ("localhost", "127.0.0.1", "0.0.0.0")) else None
+
+
+def _vis_text(v: dict) -> str:
+    lines = [f"{v['site']}: in the results for {v['cited']} of {v['total']} questions ({v['engine']}, {v['checked_at'][:10]})"]
+    for r in v["results"]:
+        mark = f"✓ #{r['rank']}" if r["cited"] else "✗"
+        lines.append(f"  {mark}  {r['query']}" + ("" if r["cited"] else f"  (instead: {', '.join(r['others'][:3]) or '—'})"))
+    return "\n".join(lines)
 
 
 @app.command(name="report")

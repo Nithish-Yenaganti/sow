@@ -168,8 +168,17 @@ async def _scan(base: str, paths: list[str], max_pages: int, concurrency: int) -
             info["count"] = len(urls)
             site["sitemaps"].append(info)
             sm_urls += urls
-        ours = [u for u in sm_urls if site_host(urlparse(u).netloc) in (host, "")]
-        site["sitemap_paths"] = sorted({_rel(urlparse(u).path, prefix) for u in ours})
+        def in_site(u: str) -> bool:
+            pu = urlparse(u)
+            same_host = site_host(pu.netloc) in (host, "")
+            # for a site under /repo, sitemap entries outside /repo belong to another site
+            return same_host and (not prefix or pu.path == prefix or pu.path.startswith(prefix + "/"))
+        ours = [u for u in sm_urls if in_site(u)]
+        # remember the exact URL to fetch for each path (trailing slash etc. as the site writes it)
+        fetch_url: dict[str, str] = {}
+        for u in ours:
+            fetch_url.setdefault(_rel(urlparse(u).path, prefix), u)
+        site["sitemap_paths"] = sorted(fetch_url)
         site["sitemap_foreign_hosts"] = sorted({urlparse(u).netloc for u in sm_urls
                                                 if site_host(urlparse(u).netloc) not in (host, "")})
 
@@ -181,8 +190,11 @@ async def _scan(base: str, paths: list[str], max_pages: int, concurrency: int) -
         pages: dict[str, dict] = {}
         sem = asyncio.Semaphore(concurrency)
 
+        def url_for(path: str) -> str:
+            return fetch_url.get(path) or base + (path if path != "/" else "/")
+
         async def fetch(path: str):
-            url = base + (path if path != "/" else "/")
+            url = url_for(path)
             if parser and not parser.can_fetch(url, "findable"):
                 pages[path] = {"status": None, "skipped": "disallowed for findable in robots.txt", "source": "live"}
                 return
@@ -192,6 +204,12 @@ async def _scan(base: str, paths: list[str], max_pages: int, concurrency: int) -
                            "final_url": res.get("final_url"), "source": "live"}
             if res.get("error"):
                 facts["error"] = res["error"]
+            final = urlparse(res.get("final_url") or url)
+            if final.netloc and site_host(final.netloc) != host:
+                # this link leaves the site (e.g. /chat -> discord.com): not one of the site's pages
+                facts["redirected_off_host"] = final.netloc
+                pages[path] = facts
+                return
             if res.get("status") == 200 and res["text"]:
                 facts.update(analyze_html(res["text"], url))
                 # links and canonical as site-relative paths (handles www/apex and /repo base paths)
@@ -201,6 +219,10 @@ async def _scan(base: str, paths: list[str], max_pages: int, concurrency: int) -
                     if rl not in rel_links:
                         rel_links.append(rl)
                 facts["links"] = rel_links
+                for link, abs_url in facts.pop("link_urls", {}).items():
+                    au = urlparse(abs_url)
+                    if site_host(au.netloc) == host:
+                        fetch_url.setdefault(_rel(link, prefix), abs_url)
                 if facts.get("canonical"):
                     cu = urlparse(facts["canonical"])
                     facts["canonical_path"] = _rel(cu.path, prefix)
@@ -208,9 +230,6 @@ async def _scan(base: str, paths: list[str], max_pages: int, concurrency: int) -
                 low = res["text"][:20000].lower()
                 facts["_markers"] = [m for m in CHALLENGE_MARKERS if m.lower() in low]
                 facts["empty_without_js"] = _looks_like_shell(res["text"], facts["word_count"])
-                final = urlparse(res.get("final_url") or url)
-                if final.netloc and site_host(final.netloc) != host:
-                    facts["redirected_off_host"] = final.netloc
             pages[path] = facts
 
         i = 0
@@ -230,13 +249,14 @@ async def _scan(base: str, paths: list[str], max_pages: int, concurrency: int) -
             return {"pages": pages, "site": site}
 
         # AI-bot access: homepage + up to 2 other OK pages, each bot UA vs. a browser baseline
-        sample = ["/"] + [p for p, f in pages.items() if p != "/" and f.get("status") == 200][:2]
+        sample = ["/"] + [p for p, f in pages.items()
+                          if p != "/" and f.get("status") == 200 and "title" in f and not f.get("redirected_off_host")][:2]
         site["bot_access"] = {}
         for name, (ua, purpose) in AI_BOTS.items():
             results = []
             for p in sample:
                 base_status = pages.get(p, {}).get("status")
-                r = await _get(client, base + p, ua)
+                r = await _get(client, url_for(p), ua)
                 txt = r.get("text", "")[:20000]
                 baseline_markers = set(pages.get(p, {}).get("_markers", []))
                 challenged = any(m.lower() in txt.lower() and m not in baseline_markers for m in CHALLENGE_MARKERS)
