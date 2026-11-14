@@ -4,7 +4,7 @@
     "name": "Nithish-Yenaganti"
   },
   "metadata": {
-    "description": "SOW (Stay On Web): skills that keep your website findable, healthy and legally prepared on the web."
+    "description": "SOW (Stay On Web): Claude Code and Codex skills that make your website findable (technical SEO, AEO, GEO) and compliant (privacy, cookies, GDPR/CCPA, payments, licenses, AI)."
   },
   "plugins": [
     {
@@ -15,7 +15,7 @@
         "./skills/findable",
         "./skills/compliance"
       ],
-      "description": "SOW (Stay On Web) skills for your website. findable: can Google and AI engines find, read and cite your site? compliance: finds privacy, cookie, payments, AI and licensing gaps and builds the fixes you approve (not legal advice).",
+      "description": "findable: technical SEO, AEO and GEO for your codebase. Checks whether Google and AI tools (ChatGPT, Claude, Perplexity) can find, read and cite your site, and fixes what you approve. compliance: finds privacy, cookie consent, GDPR/CCPA, payments, AI disclosure and licensing gaps and builds the fixes you approve (not legal advice). No API keys.",
       "version": "0.7.0",
       "author": {
         "name": "Nithish-Yenaganti"
@@ -24,15 +24,28 @@
       "category": "web",
       "keywords": [
         "seo",
+        "technical-seo",
         "aeo",
         "geo",
+        "generative-engine-optimization",
         "ai-search",
+        "llm-seo",
+        "ai-crawlers",
+        "sitemap",
+        "robots-txt",
         "indexing",
+        "search-console",
+        "keyword-research",
+        "nextjs",
+        "compliance",
         "privacy",
+        "privacy-policy",
         "gdpr",
         "ccpa",
         "cookie-consent",
-        "licenses"
+        "terms-of-service",
+        "licenses",
+        "ai-disclosure"
       ]
     }
   ]
