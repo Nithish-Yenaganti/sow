@@ -51,6 +51,10 @@ compliance finds these early and helps you fix them, without pretending to repla
 - **Code:** cookie consent before trackers load, delete-account and download-data flows, renewal notices and cancel links, AI labels, footer links to every policy.
 - **Notices:** a third-party license list for the packages you use.
 
+## Tested on real projects
+
+Tested on 8 open-source projects (SaaS starters, AI chat apps, a store, a blog) at fixed versions, with every expected result checked by reading the code: [see the results](../../evals/compliance/RESULTS.md).
+
 ## What it won't do
 
 - Give legal advice, or call your site "compliant".
@@ -106,6 +110,15 @@ cd skills/compliance/cli
 uv run pytest
 uv run compliance plan --path ../../../tests/compliance/fixtures/saas-nextjs
 ```
+
+**Evals:** [evals/compliance](../../evals/compliance) scans 8 open-source projects at pinned commits and checks hand-verified expectations (`must`, `must_not`, and `known_gaps` still to fix). It runs weekly in CI (`.github/workflows/evals.yml`) and on demand, from the repo root:
+
+```bash
+uv run --project skills/compliance/cli python evals/compliance/run.py          # summary
+uv run --project skills/compliance/cli python evals/compliance/run.py --show   # every finding
+```
+
+When the eval finds a false alarm or a miss, fix the scanner and add a test to `tests/compliance/test_regressions.py`.
 
 To release, bump the version in `cli/pyproject.toml`, `cli/src/compliance/__init__.py` and the root `.claude-plugin/marketplace.json`. Re-check `references/sources.md` before each release.
 

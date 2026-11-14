@@ -37,7 +37,7 @@ Most people only find out much later. SOW gives your coding assistant two skills
 | **Mentions** | Do AI answers mention you, or someone else? *(optional)* |
 | **Keywords** | Which searches could you win? *(optional)* |
 
-[Read more about findable →](skills/findable)
+Tested on 12 real websites. [Read more about findable →](skills/findable)
 
 ### compliance: "Is my website set up the right way?"
 
@@ -52,7 +52,7 @@ Most people only find out much later. SOW gives your coding assistant two skills
 | **Claims** | Are you promising things you can't prove? |
 | **Safety** | Are passwords and secret keys kept safe? |
 
-[Read more about compliance →](skills/compliance)
+Tested on 8 open-source projects. [Read more about compliance →](skills/compliance)
 
 > compliance is not a lawyer. Every policy it writes is a draft for a lawyer to check.
 
