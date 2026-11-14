@@ -8,7 +8,15 @@ The live checks need a reachable site: AI-bot access, status codes, sitemap, emp
 - **Local:** start the dev server (e.g. `npm run dev`), then `findable scan --url http://localhost:3000`
 - The answer is remembered in `.findable/config.json`.
 
-## Search Console export {#gsc-export}
+## Search Console: Page indexing export {#gsc-index-export}
+Unlocks which pages Google isn't indexing, and why. No sign-in for findable: you download the files.
+1. Open https://search.google.com/search-console → pick the property.
+2. **Indexing → Pages**. Top right: **Export → Download CSV**. This gives the list of reasons ("Why pages aren't indexed") with page counts.
+3. For the page list: click a reason in that table (e.g. **Crawled – currently not indexed**), then **Export → Download CSV** again. Repeat for each reason you care about.
+4. Put the zips (or CSVs) in `.findable/inputs/` in this project. Keep each zip as downloaded: findable reads the reason from it.
+5. Run `/findable` again.
+
+## Search Console: Performance export {#gsc-export}
 Unlocks striking-distance pages and queries (positions 8–20).
 1. Open https://search.google.com/search-console → pick the property.
 2. **Performance → Search results** → set the date range to the **last 3 months**.

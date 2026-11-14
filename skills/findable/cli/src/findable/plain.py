@@ -34,6 +34,8 @@ PLAIN: dict[str, tuple[str, str, str]] = {
     "seo.redirect_chain": ("find", "{page} sends visitors through several redirects before it loads, which wastes crawl time.", "technical"),
     "seo.canonical": ("find", "{page} doesn't say which address is its official one, so duplicates can compete with it.", "technical"),
     "seo.canonical_mismatch": ("find", "{page} tells Google that a different page is the real one, so this page may not show up.", "technical"),
+    "seo.not_indexed": ("find", "Google isn't indexing {page}: {why}.", "technical"),
+    "seo.index_summary": ("find", "Google isn't indexing some of your pages. Search Console lists the reasons.", "technical"),
     "seo.orphan": ("find", "Some pages have no links pointing to them, so search engines rarely find them.", "technical"),
     "geo.robots_ai": ("read", "Your robots.txt blocks AI search tools (ChatGPT, Perplexity, Claude) from visiting your site.", "access"),
     "geo.bot_access": ("read", "Your hosting or firewall blocks AI and search tools, even though browsers get through.", "none"),
@@ -57,7 +59,8 @@ PLAIN: dict[str, tuple[str, str, str]] = {
     "geo.ai_not_cited": ("cite", "When people ask \u201c{query}\u201d, answers draw on {others}, not your site.", "text"),
     "setup.live_url": ("you", "Only your code was checked. Share your website address to also test the live site.", "none"),
     "setup.live_unreachable": ("you", "Your website couldn't be reached, so the live checks were skipped.", "none"),
-    "setup.gsc_csv": ("you", "Optional: add a Google Search Console export to find pages that are close to page one.", "none"),
+    "setup.gsc_csv": ("you", "Optional: add Google Search Console exports to see which pages Google isn't indexing and which are close to page one.", "none"),
+    "setup.gsc_index": ("you", "Optional: add the Search Console Page indexing export to see which pages Google isn't indexing, and why.", "none"),
     "setup.gsc_verify": ("you", "Make sure your site is connected to Google Search Console, so you can see how Google sees it.", "none"),
     "setup.submit_sitemap": ("you", "Submit your sitemap to Google and Bing (Bing also powers ChatGPT search and Copilot).", "none"),
 }
@@ -73,6 +76,12 @@ CHANGE_LABEL = {
 
 def describe(rule: str, url: str, who: str, title: str = "", current: str = "") -> dict:
     group, sentence, kind = PLAIN.get(rule, ("show", "", "technical"))
+    if rule == "seo.not_indexed":
+        from findable.rules import INDEX_REASONS, _norm_reason
+        why = INDEX_REASONS.get(_norm_reason(current), ("", f"Search Console says \u201c{current}\u201d", ""))[1]
+        page = "your homepage" if url == "/" else f"the page {url}"
+        text = sentence.replace("{page}", page).replace("{why}", why)
+        return {"group": group, "plain": text[0].upper() + text[1:], "change_kind": kind}
     if rule == "geo.ai_not_cited":
         query = title.split('"')[1] if title.count('"') >= 2 else url
         others = current.replace("top results: ", "", 1) or "other sites"

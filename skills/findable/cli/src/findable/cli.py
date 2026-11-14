@@ -111,7 +111,7 @@ def scan(
     data = collect(root, res.app, res.url, max_pages=max_pages)
     store = findings.load(root)
     previous = bool(store)
-    scope = fixable_scope(store, res.app.root, data["live_ok"], bool(data["gsc"]), vis=bool(data["vis"]))
+    scope = fixable_scope(store, res.app.root, data["live_ok"], data["gsc"], vis=bool(data["vis"]))
     current = data["findings"]
     delta = findings.apply_run(store, current, scope, app=res.app.root)
     findings.save(root, store)
@@ -238,7 +238,7 @@ def verify(
         typer.echo(err)
         raise typer.Exit(1)
     data = collect(root, app_obj, live_url, only_paths=paths or ["/"])
-    scope = fixable_scope(store, app_obj.root, data["live_ok"], bool(data["gsc"]), only_paths=paths) & set(targets)
+    scope = fixable_scope(store, app_obj.root, data["live_ok"], data["gsc"], only_paths=paths) & set(targets)
     now = {findings.key(app_obj.root, f.fingerprint) for f in data["findings"]}
     findings.apply_run(store, [f for f in data["findings"] if findings.key(app_obj.root, f.fingerprint) in targets],
                        scope, app=app_obj.root)
@@ -246,7 +246,7 @@ def verify(
     results = []
     for fp in targets:
         if fp not in scope:
-            why = not_checked_reason(store[fp], data["live_ok"], bool(data["gsc"]), True, paths) or "not re-checked"
+            why = not_checked_reason(store[fp], data["live_ok"], data["gsc"], True, paths) or "not re-checked"
             state = f"not re-checked ({why})"
         elif fp in now:
             state = "still failing"

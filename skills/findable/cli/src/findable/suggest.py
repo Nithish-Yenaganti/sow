@@ -23,11 +23,11 @@ def suggestions(code_site: dict, live: dict | None, url: str | None, gsc: dict |
             evidence="live checks were skipped", fix="suggestions.md#live-url"))
     if gsc is None:
         S.append(Finding(
-            "setup.gsc_csv", "site", "Add a Search Console export to find striking-distance pages",
-            "no export in .findable/inputs/", "Performance export (zip or CSVs) in .findable/inputs/",
+            "setup.gsc_csv", "site", "Add Search Console exports to see what Google indexes and ranks",
+            "no export in .findable/inputs/", "Page indexing and Performance exports in .findable/inputs/",
             "low", "SEO", who="user",
-            evidence="unlocks: pages and queries ranking 8–20, joined with this page's other issues",
-            fix="suggestions.md#gsc-export"))
+            evidence="unlocks: which pages Google isn't indexing and why, plus pages and searches ranking 8–20",
+            fix="suggestions.md#gsc-index-export"))
         if not code_site.get("has_gsc_verification"):
             S.append(Finding(
                 "setup.gsc_verify", "site", "Check the site is verified in Google Search Console",
@@ -35,6 +35,12 @@ def suggestions(code_site: dict, live: dict | None, url: str | None, gsc: dict |
                 "site verified in Search Console", "low", "SEO", who="user",
                 evidence="without it you can't see indexing, queries or crawl problems",
                 fix="suggestions.md#gsc-verify"))
+    elif not ((gsc.get("index") or {}).get("urls") or (gsc.get("index") or {}).get("reasons")):
+        S.append(Finding(
+            "setup.gsc_index", "site", "Add the Search Console Page indexing export",
+            "only the Performance export is in .findable/inputs/", "Page indexing export in .findable/inputs/",
+            "low", "SEO", who="user", evidence="unlocks: which pages Google isn't indexing, and why",
+            fix="suggestions.md#gsc-index-export"))
     has_sitemap = bool(code_site.get("sitemap")) or any(s.get("status") == 200 for s in lsite.get("sitemaps", []))
     if has_sitemap:
         S.append(Finding(

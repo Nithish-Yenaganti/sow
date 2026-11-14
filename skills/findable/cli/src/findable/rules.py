@@ -176,6 +176,7 @@ def evaluate(code: dict, live: dict | None, gsc: dict | None, vis: dict | None =
     _site_rules(F, code["site"], lsite if live_ok else None, pages, fw)
     if gsc:
         _gsc_rules(F, gsc, F, pages)
+        _index_rules(F, gsc.get("index") or {}, pages)
     if vis:
         _visibility_rules(F, vis)
     return sorted(F, key=lambda f: (SEVERITY_RANK[f.severity], 0 if f.who == "user" else 1, f.url, f.rule))
@@ -399,6 +400,62 @@ def _visibility_rules(F: list[Finding], vis: dict) -> None:
                          source="visibility",
                          evidence=f"{vis.get('engine', 'web search')} on {when}: {r.get('results', 0)} results, none from {vis.get('site')}",
                          fix="references/ai-visibility.md#improve"))
+
+
+# Page indexing reasons (Search Console wording, lower-case, dashes normalised):
+# reason -> (severity, short explanation, fix). Reasons that are normal (redirects, proper
+# canonicals) are skipped.
+INDEX_REASONS = {
+    "server error (5xx)": ("high", "Google got a server error", "playbooks/generic.md#broken-page"),
+    "redirect error": ("high", "the redirect is broken or loops", "playbooks/generic.md#redirects"),
+    "blocked by robots.txt": ("high", "robots.txt blocks Google from it", "playbooks/generic.md#robots"),
+    "excluded by 'noindex' tag": ("high", "a noindex setting tells Google not to index it", "playbooks/generic.md#noindex"),
+    "not found (404)": ("medium", "Google gets 'not found'", "playbooks/generic.md#broken-page"),
+    "soft 404": ("medium", "Google thinks it's an empty or error page", "references/checks.md#not-indexed"),
+    "crawled - currently not indexed": ("medium", "Google visited it but chose not to index it, usually because it looks thin or too similar to other pages", "references/checks.md#not-indexed"),
+    "discovered - currently not indexed": ("medium", "Google knows it exists but hasn't visited it yet; more internal links help", "references/checks.md#not-indexed"),
+    "duplicate without user-selected canonical": ("medium", "Google sees it as a copy of another page and you haven't said which is the original", "playbooks/generic.md#canonical"),
+    "duplicate, google chose different canonical than user": ("medium", "Google picked a different page as the original than the one you set", "playbooks/generic.md#canonical"),
+    "blocked due to unauthorized request (401)": ("low", "it needs a login, which is often on purpose", ""),
+    "blocked due to access forbidden (403)": ("low", "access is forbidden, which is often on purpose", ""),
+}
+NORMAL_INDEX_REASONS = {"page with redirect", "alternate page with proper canonical tag"}
+MAX_INDEX_URLS_PER_REASON = 30
+
+
+def _norm_reason(r: str) -> str:
+    return " ".join(r.replace("\u2013", "-").replace("\u2014", "-").replace("\u2019", "'").lower().split())
+
+
+def _index_rules(F: list[Finding], index: dict, pages: dict) -> None:
+    by_reason: dict[str, list[dict]] = defaultdict(list)
+    for u in index.get("urls", []):
+        by_reason[u["reason"]].append(u)
+    for reason, urls in by_reason.items():
+        key = _norm_reason(reason)
+        if key in NORMAL_INDEX_REASONS:
+            continue
+        sev, why, fix = INDEX_REASONS.get(key, ("medium", "Google reports a problem with it", "references/checks.md#not-indexed"))
+        for u in urls[:MAX_INDEX_URLS_PER_REASON]:
+            path = u["path"]
+            in_code = bool((pages.get(path) or {}).get("code"))
+            F.append(Finding("seo.not_indexed", path, f"Google isn't indexing {path}", reason,
+                             "indexed by Google (or deliberately excluded)", sev, "SEO",
+                             file=(pages.get(path, {}).get("code") or {}).get("file"), source="gsc_index",
+                             evidence=f"Search Console: {why}" + (f"; last crawled {u['last_crawled']}" if u.get("last_crawled") else "")
+                                      + ("" if in_code else "; not one of the routes in this app's code"),
+                             fix=fix))
+    if not by_reason:       # only the summary table: one site-level finding
+        bad = [r for r in index.get("reasons", []) if r["pages"] > 0 and _norm_reason(r["reason"]) not in NORMAL_INDEX_REASONS]
+        if bad:
+            total = sum(r["pages"] for r in bad)
+            top = sorted(bad, key=lambda r: -r["pages"])[:5]
+            F.append(Finding("seo.index_summary", "site", f"Google isn't indexing {total} page(s)",
+                             "; ".join(f"{r['reason']}: {r['pages']}" for r in top),
+                             "every page you want found is indexed", "high" if total >= 10 else "medium", "SEO",
+                             source="gsc_index",
+                             evidence="Search Console Page indexing report. Export one reason's page list to see which URLs",
+                             fix="suggestions.md#gsc-index-export"))
 
 
 def _gsc_rules(F: list[Finding], gsc: dict, existing: list[Finding], pages: dict) -> None:

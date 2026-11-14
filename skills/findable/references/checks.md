@@ -53,3 +53,12 @@ Each rule id appears in findings as `rule`. "Why" is what to tell the user when 
 
 ## Setup (user steps)
 `setup.live_url`, `setup.live_unreachable`, `setup.gsc_csv`, `setup.gsc_verify`, `setup.submit_sitemap`: see `suggestions.md`.
+
+## Not indexed by Google {#not-indexed}
+From the Search Console Page indexing export. What the common reasons mean and what helps:
+- **Crawled – currently not indexed:** Google read the page and decided it isn't worth indexing yet. Make the content more useful and distinct (a clear answer, specifics), link to it from important pages, and make sure it's not a near-copy of another page.
+- **Discovered – currently not indexed:** Google knows the URL but hasn't fetched it. Add internal links from pages Google already visits, list it in the sitemap, and avoid huge numbers of thin URLs (filters, tags).
+- **Duplicate without user-selected canonical / Google chose a different canonical:** set a self-referencing canonical on the page you want indexed, and point copies at it.
+- **Excluded by 'noindex':** remove noindex if the page should be found.
+- **Not found (404) / Soft 404 / Server error:** fix or redirect the page, and remove dead URLs from links and the sitemap.
+- **Page with redirect / Alternate page with proper canonical tag:** normal; nothing to do.

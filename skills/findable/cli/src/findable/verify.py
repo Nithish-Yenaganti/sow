@@ -36,14 +36,18 @@ def collect(root: Path, app: App, url: str | None, max_pages: int = 50,
     return {"code": code, "live": live, "gsc": gsc, "vis": vis, "findings": findings, "live_ok": live_ok, "pages": len(pages)}
 
 
-def not_checked_reason(rec: dict, live_ok: bool, gsc: bool, partial: bool,
+def not_checked_reason(rec: dict, live_ok: bool, gsc, partial: bool,
                        only_paths: list[str] | None = None, vis: bool = True) -> str | None:
     """Why this run can't mark the finding fixed, or None if it re-checked it."""
     src = rec.get("source", "code")
     if src in LIVE_SOURCES and not live_ok:
         return "needs the live site (no reachable URL this run)"
-    if src == "gsc" and not gsc:
-        return "needs the Search Console export"
+    has_perf = bool(gsc and (not isinstance(gsc, dict) or gsc.get("pages") or gsc.get("queries")))
+    has_index = bool(isinstance(gsc, dict) and ((gsc.get("index") or {}).get("urls") or (gsc.get("index") or {}).get("reasons")))
+    if src == "gsc" and not has_perf:
+        return "needs the Search Console Performance export"
+    if src == "gsc_index" and not has_index:
+        return "needs the Search Console Page indexing export"
     if src == "visibility" and (partial or not vis):
         return "re-check AI visibility (web search) to confirm"
     if partial and rec.get("rule") in CROSS_PAGE_RULES:
@@ -53,7 +57,7 @@ def not_checked_reason(rec: dict, live_ok: bool, gsc: bool, partial: bool,
     return None
 
 
-def fixable_scope(store: dict, app_root: str, live_ok: bool, gsc: bool, only_paths: list[str] | None = None,
+def fixable_scope(store: dict, app_root: str, live_ok: bool, gsc, only_paths: list[str] | None = None,
                   vis: bool = True) -> set[str]:
     """Store keys this run is allowed to mark as fixed (only what it actually re-checked)."""
     partial = only_paths is not None

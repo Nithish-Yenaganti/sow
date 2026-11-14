@@ -112,7 +112,7 @@ End with: "Run `/findable` again after deploying to confirm everything on your l
 - `findable visibility record --file <results.json>`: store AI visibility search results (see `references/ai-visibility.md`); `findable visibility show`: the latest check
 - `findable report --json`: latest results without re-scanning
 - `findable dismiss "<fingerprint>" --reason "<why>"`: when the user says a finding is intentional. Always ask for the reason.
-- Search Console data: if the user wants striking-distance pages, explain `suggestions.md#gsc-export` (they drop the export into `.findable/inputs/`), then re-scan.
+- Search Console data (no sign-in; the user downloads the files): for "which pages isn't Google indexing?" explain `suggestions.md#gsc-index-export`; for pages close to page one, `suggestions.md#gsc-export`. They drop the zips into `.findable/inputs/`, then re-scan. Not-indexed pages appear under **Can Google and AI find your pages?**
 
 ## Files
 - `references/checks.md`: what every rule means and why it matters

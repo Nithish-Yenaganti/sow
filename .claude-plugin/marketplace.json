@@ -15,7 +15,7 @@
         "./skills/findable"
       ],
       "description": "SOW (Stay On Web) skills for your website. findable: can Google and AI engines find, read and cite your site? Scans code and live site, fixes SEO/AEO/GEO issues, verifies them.",
-      "version": "0.4.0",
+      "version": "0.5.0",
       "author": {
         "name": "Nithish-Yenaganti"
       },
