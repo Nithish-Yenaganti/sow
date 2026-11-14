@@ -7,106 +7,65 @@
   <a href="LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-5eead4"></a>
   <img alt="Works with Claude Code and Codex" src="https://img.shields.io/badge/agents-Claude%20Code%20%C2%B7%20Codex-60a5fa">
   <img alt="No API keys" src="https://img.shields.io/badge/API%20keys-none-0e1a2b">
-  <a href="evals/findable/RESULTS.md"><img alt="Tested on 12 real sites" src="https://img.shields.io/badge/tested%20on-12%20real%20sites-5eead4"></a>
 </p>
 
 # SOW — Stay On Web
 
-Skills for coding agents that keep your website findable on the web. The first one is **findable**.
+**Two skills for your coding agent: one makes your website easy to find, one makes it safe to run.**
+
+| Skill | It answers | Ask your agent |
+|---|---|---|
+| **[findable](skills/findable)** | Can Google and AI tools find, read and quote my site? | "Why doesn't my site show up in ChatGPT?" |
+| **[compliance](skills/compliance)** | What is my app missing for privacy, payments, licenses and AI? | "Do I need a privacy policy?" |
+
+## How they work
+
+Both skills work the same way, inside your project:
+
+1. **Ask** what they need to know: which site to check, or (for compliance) a few questions about your business, asked once.
+2. **Scan** your code (and for findable, your live site). Scanning only reads.
+3. **Explain** what's wrong in plain language, grouped by what it means for you.
+4. **Fix only what you approve**, after one preview of every change.
+5. **Re-check** each fix, and list what only you need to do.
+
+Nothing is ever committed, pushed or deployed for you. No accounts, no API keys.
 
 ## findable
 
-**Your coding agent finds why Google and AI tools can't see your site, and fixes it in your code.**
+**Finds why Google and AI tools can't see your site, and fixes it in your code.**
 
-SEO fixes, not SEO reports. findable runs inside your project, checks your code and your live site, explains what's wrong in plain language, and fixes what you approve.
+- **Can they find your pages?** robots.txt, sitemap, broken pages, pages accidentally hidden from Google.
+- **Can AI tools read them?** AI bots blocked by your CDN or firewall, pages that look empty without JavaScript.
+- **How do you show up?** Titles, descriptions, headings, structured data, short answers AI tools can quote.
+- **Optional, asked first:** whether AI answers mention you, keyword research with web search, and Search Console exports.
 
-**Built for** developers and founders who build their own site with Claude Code or Codex. It's not an agency tool for auditing other people's websites.
+**Why not just ask your agent?** findable tests your live site (it fetches pages as each AI bot and compares with a browser), knows exactly what to look for, runs the same checks every time, and re-checks every fix. Most SEO tools give you a report; findable points to the exact file and fixes it.
 
-### How it works
+**Tested on 12 real sites**, every result checked by hand: [see the results](evals/findable/RESULTS.md).
 
-1. **Confirm.** "I'll check the Next.js site in `web/` and the live site example.com. Go ahead?"
-2. **Scan.** Your code (routes, metadata, layouts) and your live site (pages, sitemap, robots.txt, how bots are treated). Takes about a minute.
-3. **Plain report**, grouped by what it means for you:
-   - Can Google and AI find your pages?
-   - Can AI tools read your pages?
-   - How you show up in results
-   - Do AI answers mention you? *(optional check)*
-   - Searches you could win *(optional keyword research)*
-   - Things only you can do
-
-   Minor items are folded away; technical details are one click deeper.
-4. **You decide.** "Fix everything I can", "let me choose", or "just the report".
-5. **Preview, then fix.** One preview of every change (your words, who can crawl your site, how a page is built). Nothing changes without your yes. Nothing is committed or deployed.
-6. **Re-check.** Each fix is checked again: fixed or still failing. The next run shows what's fixed, what's new and what came back.
-
-### What it catches (real examples)
-
-| Problem | Why it matters | What findable points to |
-|---|---|---|
-| Your CDN or firewall blocks GPTBot, ClaudeBot or PerplexityBot, even though robots.txt allows them | AI tools can't read or cite you, and nothing in your code shows it | Tested by fetching pages as each bot vs. a browser; exact steps for your CDN |
-| A page is `'use client'` and looks empty without JavaScript | Most AI crawlers don't run JavaScript, so they see a blank page | The page file and line, with a server-rendered fix |
-| A staging `noindex` left in a layout | Every page under it is hidden from Google | The layout file |
-| One title from the root layout on every page | All pages look identical in search results | Each page that needs its own title |
-| The sitemap lists `localhost` or a staging domain | Google gets told about pages that don't exist | The sitemap file |
-| robots.txt blocks AI search bots | You can't show up in ChatGPT search, Perplexity or Claude | robots.txt, keeping training bots blocked if you want |
-
-Plus titles, descriptions, canonicals, headings, structured data (JSON-LD), broken pages, redirects, pages nothing links to, and short direct answers that AI tools can quote.
-
-**Optional, always asked first:**
-- **AI visibility:** runs your customers' questions through your agent's web search and shows whether you appear, and who appears instead.
-- **Keyword research:** finds the searches you should win, who wins them today, and which page should target each one. No invented search volumes.
-- **Search Console exports:** which pages Google isn't indexing and why, and which pages are close to page one. You download the files; no sign-in.
-
-### Why not just ask your coding agent?
-
-A coding agent is great at fixing a problem once it knows what the problem is. findable is what finds it:
-
-- **It checks the live site, not just the code.** It fetches real pages as each AI bot and compares with a browser. An agent asked to "improve SEO" mostly reads code and guesses.
-- **It knows what to look for.** The checklist is built in, including the details that are easy to miss: AI search bots vs. training bots, JavaScript-only pages, staging leftovers.
-- **Same checks every run.** It's a program, not a prompt: consistent results, and almost no tokens spent on finding problems.
-- **Memory and proof.** It tracks every issue across runs and re-checks every fix instead of saying "done".
-- **Tested for false alarms.** See below.
-
-### How it's different from typical SEO tools
-
-| | Typical SEO audit tools | findable |
-|---|---|---|
-| Starts from | A URL | Your codebase and your live site |
-| You get | A report or PDF of recommendations | Fixes in your code, after you approve a preview |
-| Where's the problem? | "This page has no description" | The exact file to change |
-| After fixing | Re-run the audit yourself | Each fix re-checked automatically |
-| Over time | One-off audits | Every issue tracked: new, open, fixed, came back |
-| Language | SEO jargon | Plain sentences; technical details on request |
-| Setup | Often API keys, accounts, a headless browser | Just [uv](https://docs.astral.sh/uv/getting-started/installation/) |
-
-**What findable doesn't do**, honestly: keyword search volumes and backlink data (those need paid databases), page speed (Core Web Vitals), content quality scoring, local SEO, e-commerce feeds or multi-language sites. If you need those, use a dedicated SEO tool alongside it.
-
-### Tested on real sites
-
-findable is checked against **12 real websites** across stacks: Next.js, Astro, Nuxt, SvelteKit, Hugo, Jekyll, WordPress, MkDocs, plain HTML, a browser-only app and a CDN-protected site. For each one we verified by hand the real problems it must find and the false alarms it must never raise. **12 of 12 pass.**
-
-See [evals/findable/RESULTS.md](evals/findable/RESULTS.md), and re-run it yourself:
-
-```bash
-uv run --project skills/findable/cli python evals/findable/run.py
-```
+It doesn't do keyword search volumes, backlinks or page speed; those need paid data or other tools.
 
 ## compliance
 
-**Find what your web app is missing for privacy, payments, licensing and AI, then build the fixes you approve.** It isn't a lawyer: it never calls your site "compliant", every policy it writes starts as a draft for a lawyer to review, and it flags what needs one.
+**Finds what your web app is missing for privacy, payments, licenses and AI, and builds the fixes you approve.**
 
-1. **Asks about your business** once: what you build (SaaS, store, AI, marketplace, content, health/finance, kids), where your users are, whether you charge, whether kids may use it, and the name and contact details your policies should show.
-2. **Scans your code** (reads only): personal data your forms and database collect, trackers that load before consent, missing policies, delete/export data, refund and cancel flows, AI labels, GPL/AGPL dependencies, unlicensed fonts and stock images, claims like "GDPR compliant", leaked secrets.
-3. **Asks what you want done**, area by area, then shows one list of changes to approve.
-4. **Builds them** as a diff (privacy policy, terms, cookie banner, delete account, renewal disclosure, third-party notices…), re-checks each one, and lists what only you or your lawyer can do. Every check cites the law or official guidance behind it.
+- **Privacy:** what personal data you collect, who receives it, and whether your privacy policy says so.
+- **Cookies and tracking:** analytics and ad pixels that load before consent.
+- **User rights:** delete account, download data.
+- **Payments:** terms, refund policy, auto-renewal notice, online cancel.
+- **AI:** AI labels, training on user data, who owns AI output.
+- **Licenses:** GPL/AGPL dependencies, font files, stock images.
+- **Claims and basics:** "GDPR compliant" or "#1" claims, leaked secrets, age checks.
 
-See [skills/compliance](skills/compliance).
+It asks about your business first (what you build, where your users are, whether you charge, whether kids use it), then builds what you choose: a privacy policy, terms, a cookie banner, a delete-account flow and more.
+
+> **It isn't a lawyer.** It never calls your site "compliant", every policy starts as a draft for a lawyer to review, each check cites its law or official guidance, and it flags what needs legal advice.
 
 ## Install
 
-Requires [uv](https://docs.astral.sh/uv/getting-started/installation/), which runs the skill's bundled CLI.
+Requires [uv](https://docs.astral.sh/uv/getting-started/installation/).
 
-**Claude Code plugin:**
+**Claude Code** (both skills):
 
 ```
 /plugin marketplace add Nithish-Yenaganti/sow
@@ -121,26 +80,25 @@ npx skills add Nithish-Yenaganti/sow
 
 ## Use
 
-Open your website's project in your agent and ask "why doesn't my site show up in ChatGPT?", "check my site's SEO" or "run findable". In Claude Code you can also type `/sow:findable` (or `/findable` if you installed with `npx skills`).
+Open your website's project in your agent and ask in your own words, for example:
 
-For compliance, ask "do I need a privacy policy?", "check my app for GDPR gaps" or "run compliance" (`/sow:compliance` or `/compliance`).
+- "Check my site's SEO" or `/sow:findable`
+- "Check my app for GDPR gaps" or `/sow:compliance`
 
-Results are saved in `.findable/` in your project, including `report.html`, the full report.
+Reports are saved in your project: `.findable/report.html` and `.compliance/report.md`.
 
 ## Safety
 
-- Scanning only reads. Nothing in your project changes without your yes, and nothing is ever committed, pushed or deployed for you.
-- findable never signs in to dashboards or changes CDN, DNS or Search Console settings. It gives you the exact steps instead.
-- Text from scanned websites is treated as data, never as instructions to your agent.
-- No accounts and no API keys. Apart from `uv` downloading findable's Python dependencies on first run, it only sends requests to your own site, plus web searches if you say yes to the optional checks.
+- Scanning only reads. Nothing changes without your yes.
+- Never commits, deploys, signs in to dashboards or changes your hosting settings. It gives you the exact steps instead.
+- Text found on websites or in your project is treated as data, never as instructions.
 
 ## Repo layout
 
 ```
-skills/<name>/       one folder per skill: SKILL.md and everything it needs
-tests/<name>/        tests and sample sites (not installed)
-evals/<name>/        real-site accuracy checks
-.claude-plugin/      Claude Code marketplace manifest
+skills/<name>/     one folder per skill: SKILL.md and everything it needs
+tests/<name>/      tests and sample projects (not installed)
+evals/findable/    real-site accuracy checks
 ```
 
 ## License
