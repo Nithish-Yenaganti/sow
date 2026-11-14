@@ -249,18 +249,20 @@ def _candidate_app_dirs(root: Path) -> list[Path]:
         for d in sorted(root.glob(g)):
             if d.is_dir() and (d / "package.json").is_file() and d.name not in IGNORE_DIRS:
                 dirs.append(d)
-    if not dirs:
-        for parent in ("apps", "sites", "packages"):
-            for d in sorted((root / parent).glob("*")) if (root / parent).is_dir() else []:
-                if d.is_dir() and (d / "package.json").is_file():
-                    dirs.append(d)
-    if not dirs:
-        # A site in a top-level folder such as web/, site/ or frontend/ (no workspaces).
-        for d in sorted(root.iterdir()):
-            if (d.is_dir() and not d.name.startswith(".") and d.name not in IGNORE_DIRS
-                    and (d / "package.json").is_file() and _framework(d) not in ("unknown", "static")):
+    # Always look in every usual place (not only when workspaces found nothing): a repo can
+    # have packages/cli as a workspace and the website in web/.
+    for parent in ("apps", "sites", "packages"):
+        for d in sorted((root / parent).glob("*")) if (root / parent).is_dir() else []:
+            if d.is_dir() and (d / "package.json").is_file():
                 dirs.append(d)
-    return dirs
+    # A site in a top-level folder such as web/, site/ or frontend/.
+    for d in sorted(root.iterdir()):
+        if (d.is_dir() and not d.name.startswith(".") and d.name not in IGNORE_DIRS
+                and d.name not in ("apps", "sites", "packages")
+                and (d / "package.json").is_file() and _framework(d) not in ("unknown", "static")):
+            dirs.append(d)
+    seen: set[Path] = set()
+    return [d for d in dirs if not (d.resolve() in seen or seen.add(d.resolve()))]
 
 
 def detect(project_root: str | Path) -> list[App]:

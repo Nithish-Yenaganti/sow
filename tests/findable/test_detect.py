@@ -75,3 +75,14 @@ def test_root_site_and_subfolder_site_both_offered(tmp_path):
     assert {a.root for a in apps} == {".", "docs"}
     res = resolve(tmp_path, apps, None, None, check=lambda u: False)
     assert res.questions and res.questions[0].id == "app"
+
+
+def test_site_in_web_folder_next_to_packages(tmp_path):
+    """AgentTwin-like repo: root has index.html and packages/cli, the real site is web/."""
+    (tmp_path / "package.json").write_text('{"name": "repo", "private": true}')
+    (tmp_path / "index.html").write_text("<svg><title>x</title></svg>")
+    cli = tmp_path / "packages" / "cli"
+    cli.mkdir(parents=True)
+    (cli / "package.json").write_text('{"name": "cli", "dependencies": {"commander": "12"}}')
+    _next_site(tmp_path / "web")
+    assert [a.root for a in detect(tmp_path)] == ["web"]
