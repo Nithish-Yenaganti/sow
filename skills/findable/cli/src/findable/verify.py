@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from findable import gsc_csv, visibility
+from findable import gsc_csv, keywords, visibility
 from findable.detect import App
 from findable.rules import Finding, evaluate
 from findable.scan_code import scan_code
@@ -29,15 +29,16 @@ def collect(root: Path, app: App, url: str | None, max_pages: int = 50,
         live = scan_live(url, code_paths, max_pages=max_pages, only_paths=only_paths)
     gsc = gsc_csv.load(root / ".findable" / "inputs")
     vis = visibility.load(root)
-    findings: list[Finding] = evaluate(code, live, gsc, vis)
+    kw = keywords.load(root)
+    findings: list[Finding] = evaluate(code, live, gsc, vis, kw)
     findings = suggestions(code["site"], live, url, gsc, app.dev_command) + findings
     live_ok = bool(live) and live["site"].get("reachable", False)
     pages = set(code["pages"]) | set((live or {}).get("pages", {}))
-    return {"code": code, "live": live, "gsc": gsc, "vis": vis, "findings": findings, "live_ok": live_ok, "pages": len(pages)}
+    return {"code": code, "live": live, "gsc": gsc, "vis": vis, "kw": kw, "findings": findings, "live_ok": live_ok, "pages": len(pages)}
 
 
 def not_checked_reason(rec: dict, live_ok: bool, gsc, partial: bool,
-                       only_paths: list[str] | None = None, vis: bool = True) -> str | None:
+                       only_paths: list[str] | None = None, vis: bool = True, kw: bool = True) -> str | None:
     """Why this run can't mark the finding fixed, or None if it re-checked it."""
     src = rec.get("source", "code")
     if src in LIVE_SOURCES and not live_ok:
@@ -48,6 +49,8 @@ def not_checked_reason(rec: dict, live_ok: bool, gsc, partial: bool,
         return "needs the Search Console Performance export"
     if src == "gsc_index" and not has_index:
         return "needs the Search Console Page indexing export"
+    if src == "keywords" and (partial or not kw):
+        return "re-run the keyword research (web search) to confirm"
     if src == "visibility" and (partial or not vis):
         return "re-check AI visibility (web search) to confirm"
     if partial and rec.get("rule") in CROSS_PAGE_RULES:
@@ -58,11 +61,11 @@ def not_checked_reason(rec: dict, live_ok: bool, gsc, partial: bool,
 
 
 def fixable_scope(store: dict, app_root: str, live_ok: bool, gsc, only_paths: list[str] | None = None,
-                  vis: bool = True) -> set[str]:
+                  vis: bool = True, kw: bool = True) -> set[str]:
     """Store keys this run is allowed to mark as fixed (only what it actually re-checked)."""
     partial = only_paths is not None
     return {fp for fp, rec in store.items()
-            if rec.get("app", ".") == app_root and not_checked_reason(rec, live_ok, gsc, partial, only_paths, vis) is None}
+            if rec.get("app", ".") == app_root and not_checked_reason(rec, live_ok, gsc, partial, only_paths, vis, kw) is None}
 
 
 def verify_targets(store: dict, fingerprints: list[str] | None, app_root: str = ".") -> list[str]:

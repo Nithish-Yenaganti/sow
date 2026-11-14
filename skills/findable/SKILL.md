@@ -61,10 +61,13 @@ Scanning and reporting never change anything. Write for someone who isn't techni
    - **Can AI tools read your pages?** (`read`)
    - **How you show up in results** (`show`)
    - **Do AI answers mention you?** (`cite`): only after an AI visibility check
+   - **Searches you could win** (`grow`): only after keyword research
    - **Things only you can do** (`you`)
    Under each heading, list up to 3 findings using their `plain` sentence, most important first. Add "and N more in the report" if there are more.
    Leave out minor items (`severity: low`, except things only the user can do and items that came back after a fix). End with one line: "Plus N minor improvements (low impact) in the report." Show them only if the user asks.
 4. The path to `.findable/report.html` for the full details.
+
+**Keyword research (optional, ask first):** if the user asks about keywords, competitors or "what should we rank for", offer: "Want me to research keywords for your site? I'll run about 10–15 web searches." On yes, follow `references/keyword-research.md`.
 
 **AI visibility (optional, ask first):** if the live site was scanned and no visibility check has been recorded yet (or the user asks "does ChatGPT mention us?"), offer: "Want me to check whether AI answers mention you? I'll run about 5 web searches." On yes, follow `references/ai-visibility.md`, then include its results in this report.
 
@@ -109,6 +112,7 @@ Finish with two short lists:
 End with: "Run `/findable` again after deploying to confirm everything on your live site."
 
 ## Other commands
+- `findable keywords record --file <keywords.json>`: store keyword research results (see `references/keyword-research.md`); `findable keywords show`: the latest research
 - `findable visibility record --file <results.json>`: store AI visibility search results (see `references/ai-visibility.md`); `findable visibility show`: the latest check
 - `findable report --json`: latest results without re-scanning
 - `findable dismiss "<fingerprint>" --reason "<why>"`: when the user says a finding is intentional. Always ask for the reason.
@@ -119,6 +123,7 @@ End with: "Run `/findable` again after deploying to confirm everything on your l
 - `references/ai-bots.md`: AI crawler user agents, search vs. training
 - `references/schema.md`: JSON-LD templates
 - `references/aeo-content.md`: answer-first writing
+- `references/keyword-research.md`: keyword research with web search (no volumes) and how to act on gaps
 - `references/ai-visibility.md`: the AI visibility check (web searches) and how to improve misses
 - `references/safety.md`: hard rules
 - `playbooks/nextjs.md`, `playbooks/generic.md`: fix recipes

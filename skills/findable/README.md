@@ -7,6 +7,7 @@ No accounts, no API keys. It scans:
 - **Your code:** titles, descriptions, canonicals, `noindex` leaks, robots.txt, sitemap, JSON-LD, headings, alt text, orphan pages, and client-rendered pages that AI crawlers can't read
 - **Your live site:** status codes, redirects, sitemap health, pages that are empty without JavaScript, and whether AI bots (GPTBot, PerplexityBot, ClaudeBot…) get blocked by your CDN
 - **Search Console export** *(optional)*: pages ranking 8–20 that are close to page one
+- **Keyword research** *(optional, asks first)*: finds the searches your site should win with your agent's web search, shows who wins them today, and which page should target each one (no invented search volumes)
 - **AI visibility** *(optional, asks first)*: runs your key questions through your agent's web search and shows whether you appear, and who appears instead
 
 Then it asks which fixes you want, applies them as a diff you review, and re-checks them. It never commits or deploys.

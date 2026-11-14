@@ -111,7 +111,7 @@ def scan(
     data = collect(root, res.app, res.url, max_pages=max_pages)
     store = findings.load(root)
     previous = bool(store)
-    scope = fixable_scope(store, res.app.root, data["live_ok"], data["gsc"], vis=bool(data["vis"]))
+    scope = fixable_scope(store, res.app.root, data["live_ok"], data["gsc"], vis=bool(data["vis"]), kw=bool(data["kw"]))
     current = data["findings"]
     delta = findings.apply_run(store, current, scope, app=res.app.root)
     findings.save(root, store)
@@ -170,9 +170,59 @@ def visibility_cmd(
         if as_json else typer.echo(_vis_text(latest) + "\nNext: run `findable scan` to add these to the report.")
 
 
+@app.command(name="keywords")
+def keywords_cmd(
+    action: str = typer.Argument(..., help="record: store web-search keyword results · show: print the latest research"),
+    file: Optional[str] = typer.Option(None, "--file", help="Results JSON written by the agent (for record)"),
+    site: Optional[str] = typer.Option(None, "--site", help="Your production domain (default: found in code or the scanned URL)"),
+    as_json: bool = typer.Option(False, "--json"),
+    path: str = typer.Option("."),
+) -> None:
+    """Keyword research: for each search, do you show up, and who does instead?"""
+    from findable import keywords as kw_mod
+    root = _root(path)
+    if action == "show":
+        latest = kw_mod.load(root)
+        if latest is None:
+            typer.echo("No keyword research yet.")
+            raise typer.Exit(1)
+        _print_json(latest) if as_json else typer.echo(_kw_text(latest))
+        return
+    if action != "record" or not file:
+        typer.echo("Use: findable keywords record --file keywords.json   or   findable keywords show")
+        raise typer.Exit(1)
+    site_url = site or _production_url(root)
+    if not site_url:
+        typer.echo("Which domain is yours? Re-run with --site example.com")
+        raise typer.Exit(1)
+    try:
+        latest = kw_mod.record(root, Path(file), site_url)
+    except (OSError, ValueError) as e:
+        typer.echo(f"Could not read the results: {e}")
+        raise typer.Exit(1)
+    _print_json({"status": "ok", "keywords": latest, "next": "run `findable scan` to add these to the report"}) \
+        if as_json else typer.echo(_kw_text(latest) + "\nNext: run `findable scan` to add these to the report.")
+
+
+def _kw_text(k: dict) -> str:
+    lines = [f"{k['site']}: you show up for {k['ranking']} of {k['total']} searches ({k['engine']}, {k['checked_at'][:10]})"]
+    for r in k["keywords"]:
+        mark = f"✓ #{r['rank']}" if r["ranks"] else "✗"
+        tgt = f" → {r['target_page']}" if r.get("target_page") and not r["ranks"] else ""
+        lines.append(f"  {mark}  {r['keyword']}" + (f"  [{r['intent']}]" if r.get("intent") else "")
+                     + ("" if r["ranks"] else f"  (instead: {', '.join(r['others'][:3]) or '—'}){tgt}"))
+    if k.get("top_competitors"):
+        lines.append("Sites that show up most for your searches: "
+                     + ", ".join(f"{c['domain']} ({c['keywords']})" for c in k["top_competitors"][:5]))
+    return "\n".join(lines)
+
+
 def _production_url(root: Path) -> str | None:
     cfg = ask.load_config(root)
-    app_obj = {a.root: a for a in detect(root)}.get(cfg.get("app", "")) or (app_at(root, cfg["app"]) if cfg.get("app") else None)
+    apps = detect(root)
+    app_obj = {a.root: a for a in apps}.get(cfg.get("app", "")) or (app_at(root, cfg["app"]) if cfg.get("app") else None)
+    if app_obj is None and len(apps) == 1:       # not scanned yet: the only site in the repo
+        app_obj = apps[0]
     if app_obj and app_obj.site_urls:
         return app_obj.site_urls[0]
     url = cfg.get("url") or ""

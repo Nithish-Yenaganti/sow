@@ -69,7 +69,8 @@ def merge_pages(code: dict, live: dict | None) -> dict[str, dict]:
     return dict(out)
 
 
-def evaluate(code: dict, live: dict | None, gsc: dict | None, vis: dict | None = None) -> list[Finding]:
+def evaluate(code: dict, live: dict | None, gsc: dict | None, vis: dict | None = None,
+             kw: dict | None = None) -> list[Finding]:
     fw = code["site"].get("framework", "static")
     pages = merge_pages(code, live)
     lsite = (live or {}).get("site", {}) if live else {}
@@ -179,6 +180,8 @@ def evaluate(code: dict, live: dict | None, gsc: dict | None, vis: dict | None =
         _index_rules(F, gsc.get("index") or {}, pages)
     if vis:
         _visibility_rules(F, vis)
+    if kw:
+        _keyword_rules(F, kw, gsc, pages)
     return sorted(F, key=lambda f: (SEVERITY_RANK[f.severity], 0 if f.who == "user" else 1, f.url, f.rule))
 
 
@@ -386,6 +389,32 @@ def _disallows_all(text: str) -> bool:
     rp = Protego.parse(text)
     ua = "SomeSearchBot"     # falls under the `User-agent: *` group, grouped UA lines included
     return not rp.can_fetch("https://site.invalid/", ua) and not rp.can_fetch("https://site.invalid/about", ua)
+
+
+def _keyword_rules(F: list[Finding], kw: dict, gsc: dict | None, pages: dict) -> None:
+    from findable.keywords import slug
+    gsc_q = {q["key"].lower(): q for q in (gsc or {}).get("queries", [])}
+    when = (kw.get("checked_at") or "")[:10]
+    for k in kw.get("keywords", []):
+        q = gsc_q.get(k["keyword"].lower())
+        gsc_ev = f"; Search Console: {int(q['impressions'])} impressions, position {q['position']:.1f}" if q else ""
+        target = k.get("target_page")
+        file = (pages.get(target, {}).get("code") or {}).get("file") if target else None
+        intent = f"{k['intent']} search" if k.get("intent") else "search"
+        if not k.get("ranks"):
+            others = ", ".join(k.get("others", [])[:3]) or "other sites"
+            sev = "medium" if k.get("intent") in ("commercial", "comparison", "transactional") or q else "low"
+            F.append(Finding("seo.keyword_gap", slug(k["keyword"]), f'Not in the results for "{k["keyword"]}"',
+                             f"top results: {others}",
+                             f"a page that answers this search ({'improve ' + target if target else 'new page'})",
+                             sev, "SEO", file=file, source="keywords",
+                             evidence=f"{intent}; {kw.get('engine', 'web search')} on {when}: none of {k.get('results', 0)} results from {kw.get('site')}{gsc_ev}",
+                             fix="references/keyword-research.md#act"))
+        elif (k.get("rank") or 0) > 5:
+            F.append(Finding("seo.keyword_low", slug(k["keyword"]), f'Only #{k["rank"]} for "{k["keyword"]}"',
+                             f"#{k['rank']}: {k.get('ranking_url')}", "top 5 for this search", "low", "SEO",
+                             file=file, source="keywords", evidence=f"{intent}{gsc_ev}",
+                             fix="references/keyword-research.md#act"))
 
 
 def _visibility_rules(F: list[Finding], vis: dict) -> None:

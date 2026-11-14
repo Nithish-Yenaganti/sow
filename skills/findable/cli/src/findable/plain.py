@@ -18,6 +18,7 @@ GROUPS = {
     "read": "Can AI tools read your pages?",
     "show": "How you show up in results",
     "cite": "Do AI answers mention you?",
+    "grow": "Searches you could win",
     "you": "Things only you can do",
 }
 
@@ -56,6 +57,8 @@ PLAIN: dict[str, tuple[str, str, str]] = {
     "aeo.schema_invalid": ("show", "The structured facts on {page} are broken, so Google and AI ignore them.", "technical"),
     "seo.striking_distance": ("show", "{page} is almost on Google's first page; a few fixes could push it up.", "text"),
     "seo.striking_queries": ("show", "Some searches show your site on page 2 of Google; a short answer for each could move it up.", "text"),
+    "seo.keyword_gap": ("grow", "People search \u201c{query}\u201d and find {others}, but not you.", "text"),
+    "seo.keyword_low": ("grow", "You show up for \u201c{query}\u201d, but only at #{rank}.", "text"),
     "geo.ai_not_cited": ("cite", "When people ask \u201c{query}\u201d, answers draw on {others}, not your site.", "text"),
     "setup.live_url": ("you", "Only your code was checked. Share your website address to also test the live site.", "none"),
     "setup.live_unreachable": ("you", "Your website couldn't be reached, so the live checks were skipped.", "none"),
@@ -82,6 +85,12 @@ def describe(rule: str, url: str, who: str, title: str = "", current: str = "") 
         page = "your homepage" if url == "/" else f"the page {url}"
         text = sentence.replace("{page}", page).replace("{why}", why)
         return {"group": group, "plain": text[0].upper() + text[1:], "change_kind": kind}
+    if rule in ("seo.keyword_gap", "seo.keyword_low"):
+        query = title.split('"')[1] if title.count('"') >= 2 else url
+        others = current.replace("top results: ", "", 1) or "other sites"
+        rank = current.split(":")[0].lstrip("#") if current.startswith("#") else "?"
+        return {"group": group, "plain": sentence.replace("{query}", query).replace("{others}", others).replace("{rank}", rank),
+                "change_kind": kind}
     if rule == "geo.ai_not_cited":
         query = title.split('"')[1] if title.count('"') >= 2 else url
         others = current.replace("top results: ", "", 1) or "other sites"

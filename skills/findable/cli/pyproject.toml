@@ -1,7 +1,7 @@
 [project]
 # Not published to PyPI: the skill runs this project with `uv run --project`.
 name = "findable"
-version = "0.5.0"
+version = "0.6.0"
 description = "Can Google and AI engines find, read and cite your site? Scan your codebase and live site, then fix what blocks it."
 requires-python = ">=3.10"
 license = "MIT"
