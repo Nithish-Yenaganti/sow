@@ -52,3 +52,16 @@ def test_live_scan_end_to_end(project, live_site):
     assert out["run"]["live_ok"] is True
     top = out["do_first"][0]
     assert top["rule"] == "geo.bot_access" or top["severity"] == "critical"
+
+
+def test_plan_says_what_it_will_check_without_scanning(project):
+    from typer.testing import CliRunner
+    from findable.cli import app
+    root = project("nextjs-app")
+    r = CliRunner().invoke(app, ["plan", "--json", "--path", str(root), "--url", "none"])
+    assert r.exit_code == 0, r.output
+    p = json.loads(r.output)
+    assert p["status"] == "plan" and p["app"] == "." and p["url"] is None
+    assert "Next.js site in the repo root" in p["summary"] and "code only" in p["summary"]
+    assert p["scan_command"] == "findable scan --json --app . --url none"
+    assert not (root / ".findable").exists()            # planning writes nothing

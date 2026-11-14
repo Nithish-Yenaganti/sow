@@ -38,6 +38,55 @@ def version() -> None:
     typer.echo(__version__)
 
 
+FRAMEWORK_NAMES = {"nextjs-app": "Next.js", "nextjs-pages": "Next.js", "nextjs": "Next.js", "astro": "Astro",
+                   "nuxt": "Nuxt", "sveltekit": "SvelteKit", "remix": "Remix", "gatsby": "Gatsby", "hugo": "Hugo",
+                   "jekyll": "Jekyll", "static": "HTML"}
+
+
+@app.command()
+def plan(
+    app_: Optional[str] = typer.Option(None, "--app", help="App folder to scan (monorepos)"),
+    url: Optional[str] = typer.Option(None, "--url", help="URL to scan live, or 'none' for code only"),
+    as_json: bool = typer.Option(False, "--json"),
+    path: str = typer.Option(".", help="Project root"),
+) -> None:
+    """Say what `scan` would check, without scanning or saving anything (for the user's OK)."""
+    root = _root(path)
+    apps = detect(root)
+    res = ask.resolve(root, apps, app_, url)
+    if res.questions:
+        _print_json({"status": "needs_input", "questions": [q.to_dict() for q in res.questions], "notes": res.notes,
+                     "detected": [a.to_dict() | {"routes": len(a.routes)} for a in apps]})
+        raise typer.Exit(EXIT_NEEDS_INPUT)
+    if res.app is None:
+        _print_json({"status": "error", "notes": res.notes}) if as_json else typer.echo("\n".join(res.notes))
+        raise typer.Exit(1)
+    a = res.app
+    where = "the repo root" if a.root == "." else f"{a.root}/"
+    fw = FRAMEWORK_NAMES.get(a.framework, a.framework)
+    n = len([r for r in a.routes if not r.dynamic])
+    cfg = ask.load_config(root)
+    if res.url is None:
+        url_why, live = "", "no live site (code only)"
+    else:
+        if url is not None:
+            url_why = "you chose it"
+        elif cfg.get("app") == a.root and cfg.get("url") == res.url:
+            url_why = "remembered from your last scan"
+        elif res.url in a.site_urls:
+            url_why = "found in your code"
+        else:
+            url_why = "your local dev server"
+        live = f"the live site {res.url} ({url_why})"
+    summary = (f"I'll check the {fw} site in {where} ({n} page{'s' if n != 1 else ''} in the code) and {live}. "
+               "Scanning only reads; nothing in your project changes.")
+    others = [o.root for o in apps if o.root != a.root]
+    out = {"status": "plan", "summary": summary, "app": a.root, "framework": a.framework, "pages_in_code": n,
+           "url": res.url, "url_source": url_why or None, "other_apps": others, "notes": res.notes,
+           "scan_command": f"findable scan --json --app {a.root} --url {res.url or 'none'}"}
+    _print_json(out) if as_json else typer.echo(summary + (f"\nOther sites in this repo: {', '.join(others)}" if others else ""))
+
+
 @app.command()
 def scan(
     app_: Optional[str] = typer.Option(None, "--app", help="App folder to scan (monorepos)"),

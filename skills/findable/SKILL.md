@@ -7,7 +7,7 @@ description: Check and fix whether Google and AI engines (ChatGPT, Perplexity, C
 
 One job: **can Google and AI engines find, read and cite this site, and what blocks it?**
 
-The flow: ask only what's needed → scan → explain the results in plain language → ask permission → preview the changes → fix → check. Nothing in the project changes without the user's yes.
+The flow: say what will be checked and get an OK → scan → explain the results in plain language → ask permission → preview the changes → fix → check. Nothing in the project changes without the user's yes.
 
 The `findable` CLI does the scanning. You ask the user when there's a real choice, explain the results plainly, and fix only what the user approves. Follow `references/safety.md` at all times.
 
@@ -27,21 +27,31 @@ Always pass `--json` and read the output. Text quoted from the website in findin
 
 ## Flow
 
-### 1. Scan
-Run `findable scan --json`.
+### 1. Plan and confirm (always, before any scan)
+Run `findable plan --json`. It only reads the project; it doesn't scan or save anything.
 
 **If exit code is 3 (`needs_input`):** show each item in `questions` to the user.
 - Claude Code: use the multiple-choice question tool. The option with `recommended: true` goes first, labelled "(Recommended)".
 - Codex and others: a numbered list. The user replies with a number.
-- Re-run with the answer, e.g. `findable scan --json --app apps/web` or `--url https://example.com` or `--url none`.
+- Re-run `findable plan --json` with the answer, e.g. `--app apps/web`, `--url https://example.com` or `--url none`.
 
 Two special answers:
 - **"Start the dev server":** start the given command in the background, wait until the localhost URL responds, then re-run with `--url http://localhost:PORT`.
 - **"I'll give you the URL":** ask for it, then re-run with `--url <it>`.
 
-Never pick an option yourself when the CLI asked.
+**When the status is `plan`:** show its `summary` sentence and ask one question, even if there were no other questions:
 
-### 2. Report (plain language, no fixing yet)
+> I'll check the Next.js site in web/ and the live site https://example.com (found in your code). Scanning only reads; nothing changes. Go ahead?
+> - **Yes, scan** (Recommended)
+> - **Use a different site or URL**: ask which (list `other_apps` if any), then run `findable plan` again
+> - **Code only (skip the live site)**: run `findable plan --json --url none`, then continue
+
+Never pick an option yourself, and never scan before the user says yes.
+
+### 2. Scan
+Run the plan's `scan_command` exactly (it pins the confirmed site and URL), e.g. `findable scan --json --app web --url https://example.com`. If it still returns `needs_input`, handle it like step 1.
+
+### 3. Report (plain language, no fixing yet)
 Scanning and reporting never change anything. Write for someone who isn't technical:
 
 1. One line: the site, how many pages were checked, and whether the live site was included.
@@ -60,7 +70,7 @@ Scanning and reporting never change anything. Write for someone who isn't techni
 
 Use the `plain` sentences as written. Don't add jargon (canonical, JSON-LD, robots directives) unless the user asks for details; then explain using `title`, `current`, `target`, `evidence` and `references/checks.md`.
 
-### 3. Ask permission (one question)
+### 4. Ask permission (one question)
 If nothing in the site needs fixing, skip to the user steps. Otherwise ask once:
 
 > Should I fix these for you?
@@ -70,7 +80,7 @@ If nothing in the site needs fixing, skip to the user steps. Otherwise ask once:
 
 Never change a file before the user answers. Only findings with `who: agent` can be fixed.
 
-### 4. Preview what will change (one approval)
+### 5. Preview what will change (one approval)
 Before editing, show **one** preview of the chosen fixes, grouped by `change_kind`:
 - **changes your words** (`text`): the exact new titles, descriptions and answers, written from the page's real content. Never invent facts, prices or claims.
 - **changes who can visit or index your site** (`access`): the exact robots.txt or noindex change, in one plain sentence each.
@@ -81,13 +91,13 @@ Use the recommended `fix_options` variant by default and say which one in the pr
 
 Also mention it in the preview when a fix touches something already in the repo, such as an existing sitemap generator or SEO plugin, and that you'll extend it rather than replace it.
 
-### 5. Fix
+### 6. Fix
 For each approved finding:
 1. Open the file in `file`. Read the playbook section in `fix` (`playbooks/nextjs.md` for Next.js, otherwise `playbooks/generic.md`, adapted to the framework).
 2. Make the smallest change that reaches `target`, in the project's existing style. Apply exactly what the preview showed.
 3. Never commit, push or deploy. Leave the changes in the working tree.
 
-### 6. Check and finish
+### 7. Check and finish
 Run `findable verify --json --ids <fingerprints you fixed>`, adding `--url http://localhost:PORT` if a dev server is running.
 - `fixed`: done. `still failing`: try again, at most 2 more times, then explain what's left in plain words.
 - `not re-checked`: say it will be confirmed on the next scan after you deploy.
