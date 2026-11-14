@@ -4,6 +4,20 @@
 
 findable is a skill for your AI coding assistant (Claude Code, Codex). It checks your website's code and the live site, tells you what's stopping people from finding you, and fixes it after you say yes.
 
+## What findable is (and isn't)
+
+findable is a **technical SEO, AEO and GEO** tool:
+
+| | Means | findable checks |
+|---|---|---|
+| **SEO** (search engine optimization) | Google can find, list and show your pages well | Sitemap, robots.txt, hidden or broken pages, titles, descriptions, links |
+| **AEO** (answer engine optimization) | Answer tools can quote you directly | Short answers under questions, headings, structured data |
+| **GEO** (generative engine optimization) | AI tools like ChatGPT, Claude and Perplexity can read and mention you | AI robots not blocked, pages readable without JavaScript, whether AI answers mention you |
+
+It works on **your site itself**: its code and its pages. That's the foundation: if Google or AI can't reach and read your site, nothing else matters.
+
+It is **not** a full marketing SEO service. It doesn't give keyword search numbers, build backlinks, write your content plan or measure page speed. Use a dedicated SEO tool alongside it if you need those.
+
 ## Why it exists
 
 You can build a great website and still get no visitors, because search engines and AI tools never see it. The causes are usually small and invisible:

@@ -26,6 +26,8 @@ Most people only find out much later. SOW gives your coding assistant two skills
 
 ### findable: "Can people find my website?"
 
+findable is a **technical SEO, AEO and GEO** tool. In plain words: it makes sure Google can list your site (SEO), answer tools can quote it (AEO), and AI tools like ChatGPT can read and mention it (GEO). It works on your site itself, its code and pages. It is **not** a full marketing SEO service: it doesn't buy ads, build backlinks or plan content.
+
 | Topic | What it checks |
 |---|---|
 | **Google** | Can Google find and list every page? |
