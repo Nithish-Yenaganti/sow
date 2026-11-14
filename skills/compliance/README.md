@@ -32,4 +32,15 @@ uv run pytest
 uv run compliance plan --path ../../../tests/compliance/fixtures/saas-nextjs
 ```
 
+## Evals
+
+[evals/compliance](../../evals/compliance) scans 8 open-source projects at pinned commits and checks hand-verified expectations (`must`, `must_not`, and `known_gaps` still to fix). It runs weekly in CI (`.github/workflows/evals.yml`) and on demand:
+
+```bash
+uv run --project skills/compliance/cli python evals/compliance/run.py          # from the repo root
+uv run --project skills/compliance/cli python evals/compliance/run.py --show   # print every finding
+```
+
+When the eval finds a false alarm or a miss, fix the scanner and add a test to `tests/compliance/test_regressions.py`.
+
 To release, bump the version in `cli/pyproject.toml`, `cli/src/compliance/__init__.py` and the root `.claude-plugin/marketplace.json`. Re-check `references/sources.md` before each release.

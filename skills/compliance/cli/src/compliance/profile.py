@@ -181,11 +181,13 @@ def packs(profile: dict, signals: dict) -> list[str]:
     """Which packs run. Baseline always; others from the user's categories plus what the code shows."""
     cats = set(profile.get("categories", []))
     out = ["baseline"]
-    if cats & {"saas", "ecommerce"} or profile.get("charging") in ("one_time", "subscription") or signals.get("payments"):
+    if "ecommerce" in cats or profile.get("charging") in ("one_time", "subscription") or signals.get("payments"):
         out.append("payments")
     if "ai" in cats or signals.get("ai"):
         out.append("ai")
-    if "marketplace" in cats or signals.get("uploads"):
+    # Uploads alone (e.g. private chat attachments) aren't public user content: the intake recommends
+    # "marketplace" when uploads are found, and the user decides.
+    if "marketplace" in cats:
         out.append("ugc")
     if "regulated" in cats or [s for s in profile.get("sensitive", []) if s != "none"]:
         out.append("regulated")
