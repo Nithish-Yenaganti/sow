@@ -1,0 +1,18 @@
+{% include "_notice.md.j2" %}
+
+# Acceptable Use Policy
+
+**Effective date:** {{ effective_date }}
+
+When you use {{ business_name }}'s service, don't post, upload or generate:
+
+- Anything illegal, or content that sexualises minors (we report it to the authorities)
+- Harassment, threats, hate speech or content that encourages violence or self-harm
+- Content that infringes someone's copyright, trademark or privacy
+- Spam, scams, malware or phishing
+- Other people's personal data without their permission
+{% if has.get("ai") %}
+- Attempts to make AI features produce any of the above, or to get around their safety limits
+{% endif %}
+
+**Reporting:** use the "Report" button on the content, or email {{ contact_email }}. We review reports and may remove content, suspend accounts, and tell you why (you can appeal by replying).

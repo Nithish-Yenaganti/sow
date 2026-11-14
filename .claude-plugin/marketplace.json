@@ -4,7 +4,7 @@
     "name": "Nithish-Yenaganti"
   },
   "metadata": {
-    "description": "SOW (Stay On Web): skills that keep your website findable and healthy on the web."
+    "description": "SOW (Stay On Web): skills that keep your website findable, healthy and legally prepared on the web."
   },
   "plugins": [
     {
@@ -12,10 +12,11 @@
       "source": "./",
       "strict": false,
       "skills": [
-        "./skills/findable"
+        "./skills/findable",
+        "./skills/compliance"
       ],
-      "description": "SOW (Stay On Web) skills for your website. findable: can Google and AI engines find, read and cite your site? Scans code and live site, fixes SEO/AEO/GEO issues, verifies them.",
-      "version": "0.6.0",
+      "description": "SOW (Stay On Web) skills for your website. findable: can Google and AI engines find, read and cite your site? compliance: finds privacy, cookie, payments, AI and licensing gaps and builds the fixes you approve (not legal advice).",
+      "version": "0.7.0",
       "author": {
         "name": "Nithish-Yenaganti"
       },
@@ -26,7 +27,12 @@
         "aeo",
         "geo",
         "ai-search",
-        "indexing"
+        "indexing",
+        "privacy",
+        "gdpr",
+        "ccpa",
+        "cookie-consent",
+        "licenses"
       ]
     }
   ]

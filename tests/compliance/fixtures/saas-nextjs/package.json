@@ -1,0 +1,17 @@
+{
+  "name": "acme-saas",
+  "private": true,
+  "dependencies": {
+    "next": "15.0.0",
+    "react": "19.0.0",
+    "stripe": "17.0.0",
+    "openai": "4.70.0",
+    "posthog-js": "1.180.0",
+    "next-auth": "4.24.0",
+    "gpl-thing": "1.0.0",
+    "mystery-pkg": "0.1.0"
+  },
+  "devDependencies": {
+    "agpl-devtool": "2.0.0"
+  }
+}

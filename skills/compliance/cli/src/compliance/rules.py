@@ -237,10 +237,12 @@ class Finding:
     files: list[str] = field(default_factory=list)
     evidence: list[str] = field(default_factory=list)
     severity: str | None = None
+    key: str = ""          # extra identity when one subject can have several findings (claims on one line)
 
     @property
     def fingerprint(self) -> str:
-        return f"{self.rule}|{self.subject}" if self.subject else self.rule
+        ident = "|".join(x for x in (self.subject, self.key) if x)
+        return f"{self.rule}|{ident}" if ident else self.rule
 
     def to_dict(self) -> dict:
         r = RULES[self.rule]

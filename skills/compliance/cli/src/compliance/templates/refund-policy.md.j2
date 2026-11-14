@@ -1,0 +1,28 @@
+{% include "_notice.md.j2" %}
+
+# Refund and Cancellation Policy
+
+**Effective date:** {{ effective_date }}
+
+## Refunds
+
+We offer {{ refund_text }}. To ask for one, email {{ contact_email }} with your account email and order or invoice number. Refunds go back to the original payment method.
+
+{% if eu and consumers %}
+## Your 14-day right to withdraw (EU / UK consumers)
+
+You can withdraw from a purchase within 14 days without giving a reason. For digital content or services you start using straight away, you're asked at checkout to agree to start immediately and to accept that you lose this right once the service has been fully provided.
+{% endif %}
+
+{% if subscription %}
+## Cancelling a subscription
+
+- Cancel any time in **Account settings → Billing**. It's as easy as signing up, and no call or email is needed.
+- Cancelling stops the next renewal. You keep access until the end of the period you paid for.
+- We email you a confirmation when you cancel.
+{% if california %}
+- Annual plans: we remind you before they renew. Free trials: we tell you before the trial turns into a paid plan.
+{% endif %}
+{% endif %}
+
+Questions: {{ contact_email }}

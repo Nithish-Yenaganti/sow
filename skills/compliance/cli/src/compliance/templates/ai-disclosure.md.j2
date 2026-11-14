@@ -1,0 +1,10 @@
+{% include "_notice.md.j2" %}
+
+# How we use AI
+
+Some features of {{ business_name }}'s service use AI models from {{ ai_vendors | join(", ") if ai_vendors else "[TO FILL IN: AI provider]" }}.
+
+- **What's AI-generated:** content marked "AI-generated", and replies from the AI assistant.
+- **It can be wrong.** Check important information before you rely on it. It isn't professional advice.
+- **Your data:** what you type into AI features is sent to the provider to create a reply. {% if ai_training == "no" %}It isn't used to train AI models.{% elif ai_training == "opt_out" %}We may use it to improve our models unless you turn that off in settings.{% else %}It's only used to improve models if you turn that on in settings.{% endif %}
+- **Report a problem** with an AI reply: {{ contact_email }}.

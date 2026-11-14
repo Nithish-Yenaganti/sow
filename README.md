@@ -91,6 +91,17 @@ See [evals/findable/RESULTS.md](evals/findable/RESULTS.md), and re-run it yourse
 uv run --project skills/findable/cli python evals/findable/run.py
 ```
 
+## compliance
+
+**Find what your web app is missing for privacy, payments, licensing and AI, then build the fixes you approve.** It isn't a lawyer: it never calls your site "compliant", every policy it writes starts as a draft for a lawyer to review, and it flags what needs one.
+
+1. **Asks about your business** once: what you build (SaaS, store, AI, marketplace, content, health/finance, kids), where your users are, whether you charge, whether kids may use it, and the name and contact details your policies should show.
+2. **Scans your code** (reads only): personal data your forms and database collect, trackers that load before consent, missing policies, delete/export data, refund and cancel flows, AI labels, GPL/AGPL dependencies, unlicensed fonts and stock images, claims like "GDPR compliant", leaked secrets.
+3. **Asks what you want done**, area by area, then shows one list of changes to approve.
+4. **Builds them** as a diff (privacy policy, terms, cookie banner, delete account, renewal disclosure, third-party notices…), re-checks each one, and lists what only you or your lawyer can do. Every check cites the law or official guidance behind it.
+
+See [skills/compliance](skills/compliance).
+
 ## Install
 
 Requires [uv](https://docs.astral.sh/uv/getting-started/installation/), which runs the skill's bundled CLI.
@@ -112,6 +123,8 @@ npx skills add Nithish-Yenaganti/sow
 
 Open your website's project in your agent and ask "why doesn't my site show up in ChatGPT?", "check my site's SEO" or "run findable". In Claude Code you can also type `/sow:findable` (or `/findable` if you installed with `npx skills`).
 
+For compliance, ask "do I need a privacy policy?", "check my app for GDPR gaps" or "run compliance" (`/sow:compliance` or `/compliance`).
+
 Results are saved in `.findable/` in your project, including `report.html`, the full report.
 
 ## Safety
@@ -129,8 +142,6 @@ tests/<name>/        tests and sample sites (not installed)
 evals/<name>/        real-site accuracy checks
 .claude-plugin/      Claude Code marketplace manifest
 ```
-
-**Coming next:** a compliance-audit skill.
 
 ## License
 

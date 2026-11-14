@@ -1,0 +1,88 @@
+{% include "_notice.md.j2" %}
+
+# Privacy Policy
+
+**Effective date:** {{ effective_date }}
+
+{{ business_name }} ("we", "us") runs this service. This policy explains what personal data we collect, why, who we share it with, how long we keep it, and the choices you have.
+
+**Contact:** {{ contact_email }} · {{ business_address }}, {{ business_country }}
+
+## What we collect and why
+
+| Data | Why we collect it | Legal basis | How long we keep it |
+|---|---|---|---|
+{% for d in data %}
+| {{ d.data }} | {{ d.purpose }} | {{ d.basis_text }} | {{ d.retention_text }} |
+{% endfor %}
+
+We only collect what's listed above. If we start collecting something new, we'll update this policy first.
+
+## Who we share it with
+
+We use these service providers. They process data for us under contract and only for the purposes above:
+
+{% for v in vendors %}
+- **{{ v.name }}**{% if v.kind == "payments" %}: payments (we never see or store your full card number){% elif v.kind == "ai" %}: AI features (what you type into them and the replies){% elif v.kind in ("analytics", "replay") %}: product analytics{% elif v.kind == "ads" %}: advertising and measuring ads{% elif v.kind == "email" %}: sending email{% elif v.kind == "sms" %}: sending text messages{% elif v.kind == "auth" %}: sign-in and accounts{% elif v.kind == "storage" %}: storing files{% elif v.kind == "errors" %}: error monitoring{% elif v.kind == "chat" %}: customer support chat{% endif %}{{ "" }}
+{% else %}
+- We don't share your personal data with other companies.
+{% endfor %}
+
+
+We don't sell your personal data{% if sells_or_shares %}, but we do share some data with advertising partners, which California law calls "sharing". You can opt out at any time with the "Do Not Sell or Share My Personal Information" link{% endif %}.
+
+{% if ai_vendors %}
+## AI features
+
+When you use AI features, what you type and the replies are sent to {{ ai_vendors | join(", ") }} to generate a response.
+{% if ai_training == "no" %}We don't use your inputs or outputs to train AI models, and our providers are set not to either.{% elif ai_training == "opt_out" %}We may use your inputs to improve our models. You can turn this off at any time in your settings.{% else %}We only use your inputs to improve our models if you turn that on in your settings.{% endif %}
+
+AI output can be wrong. Don't rely on it for important decisions without checking.
+{% endif %}
+
+## Cookies and tracking
+
+{% if trackers %}
+We use cookies and similar tools for the purposes in our [Cookie Policy](/cookies). Non-essential ones only run after you agree, and you can change your choice at any time.
+{% else %}
+We only use cookies that are needed for the site to work (for example, keeping you signed in).
+{% endif %}
+
+## Your rights
+
+You can:
+- **See** the data we hold about you, and get a copy (**download your data**)
+- **Correct** it if it's wrong
+- **Delete** it (**delete your account**)
+- **Withdraw consent** you gave earlier, at any time
+{% if eu %}
+- **Object** to processing based on our legitimate interests, and ask us to **restrict** processing
+- **Complain** to your data protection authority (in the UK, the ICO)
+{% endif %}
+{% if california %}
+- **California residents:** know what we collect, delete it, correct it, opt out of its sale or sharing, and limit use of sensitive data. We won't treat you differently for using these rights. We honor the Global Privacy Control signal as an opt-out.
+{% endif %}
+
+To use these rights, use your account settings or email {{ contact_email }}. We reply within {% if eu %}one month{% else %}45 days{% endif %} and may need to confirm your identity first.
+
+## Children
+
+{% if minors == "under13" %}
+Children under 13 may only use the service with a parent's verified consent. Parents can review or delete their child's data by emailing {{ contact_email }}.
+{% else %}
+The service isn't meant for anyone under {{ min_age }}. If you think a child has given us data, email {{ contact_email }} and we'll delete it.
+{% endif %}
+
+## Security
+
+We protect your data with encryption in transit, access controls and hashed passwords. No system is perfectly secure; if a breach affects you, we'll tell you as the law requires.
+
+{% if eu %}
+## International transfers
+
+Some of our providers are outside the EU/UK. Where they are, we rely on the EU-US Data Privacy Framework or Standard Contractual Clauses.
+{% endif %}
+
+## Changes
+
+If we change this policy, we'll update the date above and tell you by email or in the app before important changes take effect.

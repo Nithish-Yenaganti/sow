@@ -1,0 +1,63 @@
+{% include "_notice.md.j2" %}
+
+# Terms of Service
+
+**Effective date:** {{ effective_date }}
+
+These terms are an agreement between you and {{ business_name }} ({{ business_address }}, {{ business_country }}). By creating an account or using the service, you agree to them and to our [Privacy Policy](/privacy).
+
+## 1. Who can use it
+
+{% if minors == "under13" %}
+Children under 13 may only use the service with a parent's verified consent.
+{% else %}
+You must be at least {{ min_age }} to use the service.
+{% endif %}
+You're responsible for your account and for keeping your password safe.
+
+## 2. Acceptable use
+
+Don't use the service to break the law, harm others, send spam, upload malware, infringe anyone's rights, or try to break or overload it.{% if has.get("ugc") %} Our [Acceptable Use Policy](/acceptable-use) has the full rules for content you post.{% endif %}
+
+{% if has.get("ugc") %}
+## 3. Your content
+
+You keep ownership of what you post. You give us a licence to host, show and share it as needed to run the service. You must have the rights to anything you upload. We may remove content that breaks these terms. Copyright complaints: see our [Copyright Policy](/copyright).
+{% endif %}
+
+{% if charging %}
+## 4. Payments
+{% if subscription %}
+Paid plans **renew automatically** at the end of each billing period at the then-current price until you cancel. You can cancel any time in your account settings; cancelling stops the next renewal. We'll tell you before any price change{% if california %} and remind you before a free trial converts to a paid plan{% endif %}.
+{% endif %}
+Refunds: see our [Refund and Cancellation Policy](/refunds). Prices include or exclude tax as shown at checkout.
+{% endif %}
+
+{% if has.get("ai") %}
+## 5. AI features
+
+Some features use AI. AI output can be inaccurate or incomplete, may be similar to content others receive, and isn't professional advice. Check it before relying on it. You must also follow the usage policies of our AI providers ({{ ai_vendors | join(", ") }}).
+[TO FILL IN: who owns AI output: lawyer to word this]
+{% endif %}
+
+## 6. Our service
+
+We work to keep the service running but provide it "as is", without warranties, to the extent the law allows. We may change or stop features; we'll give notice of major changes.
+
+## 7. Liability
+
+[TO FILL IN: limitation of liability clause: lawyer to write]{% if consumers and eu %} Nothing here limits rights you have as a consumer under the law.{% endif %}
+
+## 8. Ending the agreement
+
+You can stop using the service and delete your account any time. We may suspend accounts that break these terms.
+
+## 9. Changes to these terms
+
+We'll tell you about important changes before they take effect. If you keep using the service after that, the new terms apply.
+
+## 10. Law
+
+These terms are governed by the law of {{ governing_law }}.{% if consumers and eu %} If you're a consumer in the EU or UK, you also keep the protection of your own country's mandatory laws.{% endif %}
+
+Contact: {{ contact_email }}

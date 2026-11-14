@@ -10,15 +10,16 @@ permissions:
 
 jobs:
   test:
-    name: Tests (Python ${{ matrix.python }})
+    name: Tests (${{ matrix.skill }}, Python ${{ matrix.python }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
+        skill: [findable, compliance]
         python: ["3.10", "3.13"]
     defaults:
       run:
-        working-directory: skills/findable/cli
+        working-directory: skills/${{ matrix.skill }}/cli
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
@@ -45,10 +46,11 @@ jobs:
           fetch-depth: 0
       - uses: astral-sh/setup-uv@v6
       - name: Dependency vulnerabilities (pip-audit)
-        working-directory: skills/findable/cli
         run: |
-          uv export --frozen --no-dev --no-hashes --no-emit-project > "$RUNNER_TEMP/requirements.txt"
-          uvx pip-audit --strict -r "$RUNNER_TEMP/requirements.txt"
+          for skill in findable compliance; do
+            (cd "skills/$skill/cli" && uv export --frozen --no-dev --no-hashes --no-emit-project > "$RUNNER_TEMP/$skill.txt")
+            uvx pip-audit --strict -r "$RUNNER_TEMP/$skill.txt"
+          done
       - name: Leaked secrets (gitleaks)
         uses: gitleaks/gitleaks-action@v2
         env:
