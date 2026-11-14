@@ -30,11 +30,16 @@ def _plain(r: dict) -> dict:
                               r.get("title", ""), r.get("current", "")))
 
 
-def grouped(items: list[dict]) -> list[tuple[str, str, list[dict]]]:
+def is_minor(r: dict) -> bool:
+    """Low-impact fixes are folded away (shown on request), unless they came back after a fix."""
+    return r.get("severity") == "low" and r.get("who") != "user" and r.get("status") != "regressed"
+
+
+def grouped(items: list[dict], include_minor: bool = False) -> list[tuple[str, str, list[dict]]]:
     """[(group id, group question, findings)] in display order, empty groups left out."""
     out = []
     for gid, label in GROUPS.items():
-        fs = [x for x in (_plain(r) for r in items) if x["group"] == gid]
+        fs = [x for x in (_plain(r) for r in items) if x["group"] == gid and (include_minor or not is_minor(x))]
         if fs:
             out.append((gid, label, fs))
     return out
@@ -62,7 +67,10 @@ def terminal(run: dict, items: list[dict], delta: dict, report_path: str) -> str
             lines.append(f"  {mark} {r['plain'] or r['title']}")
         if len(fs) > 3:
             lines.append(f"  … and {len(fs) - 3} more in the report")
+    minor = [r for r in items if is_minor(r)]
     lines.append("")
+    if minor:
+        lines.append(f"Plus {len(minor)} minor improvement{'s' if len(minor) != 1 else ''} (low impact), folded away in the report.")
     lines.append(f"Full report: {report_path}")
     return "\n".join(lines)
 
@@ -76,7 +84,7 @@ def html(run: dict, items: list[dict], delta: dict, dismissed: list[dict]) -> st
     order = sorted(by_page, key=lambda u: (u != "site", u))
     return env.get_template("report.html").render(
         run=run, items=items, delta=delta, top=do_first(items, 5), pages=[(u, by_page[u]) for u in order],
-        groups=grouped(items), change_label=CHANGE_LABEL,
+        groups=grouped(items), minor=[r for r in items if is_minor(r)], change_label=CHANGE_LABEL,
         dismissed=dismissed, version=__version__,
         generated=datetime.now().strftime("%Y-%m-%d %H:%M"),
         counts={s: sum(1 for r in items if r["severity"] == s and r.get("who") != "user")

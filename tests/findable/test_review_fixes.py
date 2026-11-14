@@ -222,3 +222,19 @@ def test_no_self_made_redirects_and_off_site_pages_ignored():
     code = {"pages": {}, "site": {"framework": "static", "robots": None, "sitemap": None, "orphans": []}}
     rules = {f.rule for f in evaluate(code, live, None)}
     assert not rules & {"seo.sitemap_dead", "seo.redirect_chain", "seo.alt"}
+
+
+def test_minor_items_are_folded():
+    from findable.report import html, terminal
+    items = []
+    for rule, sev, url in (("seo.title", "high", "/a"), ("seo.alt", "low", "/a"), ("seo.title_length", "low", "/b")):
+        d = Finding(rule, url, "t", "c", "x", sev, "SEO").to_dict()
+        d["status"] = "open"
+        items.append(d)
+    run = {"url": "https://acme.test", "pages": 2, "live_ok": True, "app": ".", "framework": "static"}
+    delta = {"fixed": [], "regressed": [], "new": [], "open": []}
+    out = terminal(run, items, delta, "r.html")
+    assert "has no title" in out and "Images on" not in out
+    assert "Plus 2 minor improvements" in out
+    page = html(run, items, delta, [])
+    assert '<details class="minor">' in page and "Minor improvements" in page and "behind-the-scenes" in page or "changes your words" in page

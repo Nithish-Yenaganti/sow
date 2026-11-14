@@ -53,6 +53,11 @@ h2 { font-size: 17px; margin: 34px 0 10px; }
 h2 .n { color: var(--muted); font-weight: 500; font-size: 14px; margin-left: 6px; }
 details { margin-top: 6px; }
 summary { cursor: pointer; color: var(--muted); font-size: 12.5px; }
+details.minor > summary { list-style: none; color: var(--ink); }
+details.minor > summary h2 { display: inline; }
+details.minor > summary::before { content: "▸ "; color: var(--muted); }
+details.minor[open] > summary::before { content: "▾ "; }
+.hint { display: block; color: var(--muted); font-size: 13px; margin: 2px 0 10px; }
 .grid { display: grid; grid-template-columns: 90px 1fr; gap: 2px 10px; margin-top: 6px; font-size: 13.5px; }
 .grid dt { color: var(--muted); }
 .grid dd { margin: 0; word-break: break-word; }
@@ -89,10 +94,7 @@ footer { color: var(--muted); font-size: 12px; margin-top: 40px; }
   </div>
 </header>
 
-{% for gid, label, fs in groups %}
-<h2>{{ label }} <span class="n">{{ fs|length }}</span></h2>
-<section class="card">
-  {% for r in fs %}
+{% macro finding(r, gid) %}
   <div class="f">
     <div class="t">{% if gid != "you" %}<span class="pill {{ r.severity }}">{{ "important" if r.severity in ("critical", "high") else ("worth fixing" if r.severity == "medium" else "minor") }}</span>{% endif %}{{ r.plain or r.title }}
       {% if r.status == "regressed" %}<span class="status regressed">came back</span>{% endif %}</div>
@@ -112,9 +114,24 @@ footer { color: var(--muted); font-size: 12px; margin-top: 40px; }
       </dl>
     </details>
   </div>
-  {% endfor %}
+{% endmacro %}
+
+{% for gid, label, fs in groups %}
+<h2>{{ label }} <span class="n">{{ fs|length }}</span></h2>
+<section class="card">
+  {% for r in fs %}{{ finding(r, gid) }}{% endfor %}
 </section>
 {% endfor %}
+
+{% if minor %}
+<details class="minor">
+  <summary><h2>Minor improvements <span class="n">{{ minor|length }}</span></h2>
+    <span class="hint">Low impact. Nice to fix, but they won't stop you from being found.</span></summary>
+  <section class="card">
+    {% for r in minor %}{{ finding(r, r.group) }}{% endfor %}
+  </section>
+</details>
+{% endif %}
 
 {% if dismissed %}
 <h2>Dismissed</h2>

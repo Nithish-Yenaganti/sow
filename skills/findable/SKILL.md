@@ -53,6 +53,7 @@ Scanning and reporting never change anything. Write for someone who isn't techni
    - **Do AI answers mention you?** (`cite`): only after an AI visibility check
    - **Things only you can do** (`you`)
    Under each heading, list up to 3 findings using their `plain` sentence, most important first. Add "and N more in the report" if there are more.
+   Leave out minor items (`severity: low`, except things only the user can do and items that came back after a fix). End with one line: "Plus N minor improvements (low impact) in the report." Show them only if the user asks.
 4. The path to `.findable/report.html` for the full details.
 
 **AI visibility (optional, ask first):** if the live site was scanned and no visibility check has been recorded yet (or the user asks "does ChatGPT mention us?"), offer: "Want me to check whether AI answers mention you? I'll run about 5 web searches." On yes, follow `references/ai-visibility.md`, then include its results in this report.
