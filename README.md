@@ -11,70 +11,73 @@
 
 # SOW — Stay On Web
 
-**Two skills for your coding agent: one makes your website easy to find, one makes it safe to run.**
+**Helpers for your AI coding assistant that make sure your website can be found, and is set up the right way.**
 
-| Skill | It answers | Ask your agent |
-|---|---|---|
-| **[findable](skills/findable)** | Can Google and AI tools find, read and quote my site? | "Why doesn't my site show up in ChatGPT?" |
-| **[compliance](skills/compliance)** | What is my app missing for privacy, payments, licenses and AI? | "Do I need a privacy policy?" |
+## Why we made this
 
-## How they work
+Today anyone can build a website in an afternoon with an AI coding assistant. But two things often go wrong after that:
 
-Both skills work the same way, inside your project:
+1. **Nobody can find it.** Google doesn't show it, and ChatGPT never mentions it.
+2. **It's missing the rules.** No privacy policy, no cookie notice, no refund policy, or code you aren't allowed to use.
 
-1. **Ask** what they need to know: which site to check, or (for compliance) a few questions about your business, asked once.
-2. **Scan** your code (and for findable, your live site). Scanning only reads.
-3. **Explain** what's wrong in plain language, grouped by what it means for you.
-4. **Fix only what you approve**, after one preview of every change.
-5. **Re-check** each fix, and list what only you need to do.
+Most people only find out much later. SOW gives your coding assistant two skills that check for these problems, explain them in simple words, and fix them, but only when you say yes.
 
-Nothing is ever committed, pushed or deployed for you. No accounts, no API keys.
+## The two skills
 
-## findable
+### findable: "Can people find my website?"
 
-**Finds why Google and AI tools can't see your site, and fixes it in your code.**
+| Topic | What it checks |
+|---|---|
+| **Google** | Can Google find and list every page? |
+| **AI** | Can ChatGPT, Claude and Perplexity read your pages? |
+| **Blocked** | Is something accidentally keeping search engines out? |
+| **Empty** | Do some pages look blank to robots? |
+| **Titles** | Does every page have a clear name and summary? |
+| **Answers** | Are there short answers AI tools can quote? |
+| **Mentions** | Do AI answers mention you, or someone else? *(optional)* |
+| **Keywords** | Which searches could you win? *(optional)* |
 
-- **Can they find your pages?** robots.txt, sitemap, broken pages, pages accidentally hidden from Google.
-- **Can AI tools read them?** AI bots blocked by your CDN or firewall, pages that look empty without JavaScript.
-- **How do you show up?** Titles, descriptions, headings, structured data, short answers AI tools can quote.
-- **Optional, asked first:** whether AI answers mention you, keyword research with web search, and Search Console exports.
+[Read more about findable →](skills/findable)
 
-**Why not just ask your agent?** findable tests your live site (it fetches pages as each AI bot and compares with a browser), knows exactly what to look for, runs the same checks every time, and re-checks every fix. Most SEO tools give you a report; findable points to the exact file and fixes it.
+### compliance: "Is my website set up the right way?"
 
-**Tested on 12 real sites**, every result checked by hand: [see the results](evals/findable/RESULTS.md).
+| Topic | What it checks |
+|---|---|
+| **Privacy** | Do you explain what personal data you collect and why? |
+| **Cookies** | Do trackers wait until visitors say yes? |
+| **Rights** | Can users delete or download their data? |
+| **Payments** | Are refunds, renewals and cancelling clear? |
+| **AI** | Do you tell people when they're talking to AI? |
+| **Licenses** | Are you allowed to use your code, fonts and images? |
+| **Claims** | Are you promising things you can't prove? |
+| **Safety** | Are passwords and secret keys kept safe? |
 
-It doesn't do keyword search volumes, backlinks or page speed; those need paid data or other tools.
+[Read more about compliance →](skills/compliance)
 
-## compliance
+> compliance is not a lawyer. Every policy it writes is a draft for a lawyer to check.
 
-**Finds what your web app is missing for privacy, payments, licenses and AI, and builds the fixes you approve.**
+## How it works
 
-- **Privacy:** what personal data you collect, who receives it, and whether your privacy policy says so.
-- **Cookies and tracking:** analytics and ad pixels that load before consent.
-- **User rights:** delete account, download data.
-- **Payments:** terms, refund policy, auto-renewal notice, online cancel.
-- **AI:** AI labels, training on user data, who owns AI output.
-- **Licenses:** GPL/AGPL dependencies, font files, stock images.
-- **Claims and basics:** "GDPR compliant" or "#1" claims, leaked secrets, age checks.
+1. You ask your coding assistant, like: "Why doesn't my site show up in Google?"
+2. It looks at your website. Looking never changes anything.
+3. It tells you what's wrong, in simple words.
+4. You pick what to fix, and see every change first.
+5. It fixes those things and checks that they worked.
 
-It asks about your business first (what you build, where your users are, whether you charge, whether kids use it), then builds what you choose: a privacy policy, terms, a cookie banner, a delete-account flow and more.
-
-> **It isn't a lawyer.** It never calls your site "compliant", every policy starts as a draft for a lawyer to review, each check cites its law or official guidance, and it flags what needs legal advice.
-
-**Tested on 8 open-source projects** (SaaS starters, AI chat apps, a store, a blog) at pinned commits, every expected result checked by reading the code: [see the results](evals/compliance/RESULTS.md).
+It never publishes anything for you, and you don't need any accounts or keys.
 
 ## Install
 
-Requires [uv](https://docs.astral.sh/uv/getting-started/installation/).
+You need [uv](https://docs.astral.sh/uv/getting-started/installation/) installed first.
 
-**Claude Code** (both skills):
+**Claude Code:**
 
 ```
 /plugin marketplace add Nithish-Yenaganti/sow
 /plugin install sow@sow
 ```
 
-**Any agent** (Claude Code, Codex and others):
+**Other assistants (like Codex):**
 
 ```bash
 npx skills add Nithish-Yenaganti/sow
@@ -82,27 +85,11 @@ npx skills add Nithish-Yenaganti/sow
 
 ## Use
 
-Open your website's project in your agent and ask in your own words, for example:
+Open your website's project and ask:
 
-- "Check my site's SEO" or `/sow:findable`
-- "Check my app for GDPR gaps" or `/sow:compliance`
-
-Reports are saved in your project: `.findable/report.html` and `.compliance/report.md`.
-
-## Safety
-
-- Scanning only reads. Nothing changes without your yes.
-- Never commits, deploys, signs in to dashboards or changes your hosting settings. It gives you the exact steps instead.
-- Text found on websites or in your project is treated as data, never as instructions.
-
-## Repo layout
-
-```
-skills/<name>/     one folder per skill: SKILL.md and everything it needs
-tests/<name>/      tests and sample projects (not installed)
-evals/findable/    real-site accuracy checks
-```
+- "Check if my site can be found" (findable)
+- "Check if my site is set up right" (compliance)
 
 ## License
 
-MIT
+MIT, free to use.

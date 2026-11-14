@@ -1,65 +1,129 @@
 # findable
 
-**Your coding agent finds why Google and AI tools can't see your site, and fixes it in your code.**
+**Find out why Google and AI tools can't see your website, and fix it.**
 
-For the overview (how it works, what it catches, how it's different, real-site tests) see the [repo README](../../README.md). This page is the reference.
+findable is a skill for your AI coding assistant (Claude Code, Codex). It checks your website's code and the live site, tells you what's stopping people from finding you, and fixes it after you say yes.
 
-## What it checks
+## Why it exists
 
-| Group | Checks |
+You can build a great website and still get no visitors, because search engines and AI tools never see it. The causes are usually small and invisible:
+
+- A setting left over from testing tells Google "don't show this page".
+- Your hosting quietly blocks ChatGPT's robot.
+- A page only shows its text after JavaScript runs, so most AI robots see a blank page.
+- Every page has the same title, so they all look identical in search results.
+
+Nothing looks broken when you open the site yourself, so these problems can sit there for months. findable finds them in about a minute.
+
+## What it covers
+
+| Topic | What it checks |
 |---|---|
-| **Can Google and AI find your pages?** | robots.txt (missing, blocks everyone), `noindex` leaks (page or layout), sitemap (missing, wrong domain, missing pages, dead or redirecting URLs), broken pages, redirect chains, canonicals, pages nothing links to, pages Google isn't indexing (Search Console export) |
-| **Can AI tools read your pages?** | AI search bots blocked in robots.txt, AI and search bots blocked by your CDN or firewall (tested with each bot's user agent against a browser), pages empty without JavaScript, `'use client'` pages |
-| **How you show up in results** | titles and descriptions (missing, length, duplicated, inherited from the layout), main heading, short direct answers under question headings, structured data (missing, invalid, no Organization/WebSite on the homepage), image text descriptions, pages close to page one (Search Console export) |
-| **Do AI answers mention you?** *(optional)* | your customers' questions run through your agent's web search: do you appear, and who appears instead |
-| **Searches you could win** *(optional)* | keyword research with web search: searches you're missing, who wins them, the page that should target each |
-| **Things only you can do** | Search Console setup, sitemap submission, CDN settings, with exact steps |
+| **Google** | Can Google find, visit and list every page? (sitemap, robots.txt, broken pages, redirects) |
+| **Hidden** | Is a page accidentally marked "don't show in Google"? |
+| **AI** | Do ChatGPT, Claude, Perplexity and Bing get through, or does your hosting block them? |
+| **Empty** | Does a page look blank to robots that don't run JavaScript? |
+| **Titles** | Does every page have its own title and summary for search results? |
+| **Headings** | Does each page have one clear main heading? |
+| **Answers** | Are questions on your pages followed by a short answer AI tools can quote? |
+| **Facts** | Does your site describe your business in the format Google and AI read (structured data)? |
+| **Links** | Is every page linked from somewhere, so it can be found? |
+| **Indexing** | Which pages Google isn't listing, and why *(optional, from a Search Console download)* |
+| **Mentions** | When people ask AI your customers' questions, do you show up? *(optional, asks first)* |
+| **Keywords** | Which searches could you win, and who wins them now? *(optional, asks first)* |
 
-Low-impact items are folded into "Minor improvements" so the important ones stand out.
+## How it works
 
-## Inputs
+1. **Ask:** "Why doesn't my site show up in Google?" or "Check my site's SEO".
+2. **Confirm:** "I'll check the site in `web/` and the live site example.com. Go ahead?"
+3. **Scan:** it reads your code and visits your live site. This only reads, never changes anything.
+4. **Report:** problems in plain words, grouped by what they mean for you. Small things are folded away.
+5. **Choose:** "Fix everything", "let me choose" or "just the report".
+6. **Preview:** you see every change before anything is touched.
+7. **Fix and check:** it makes the changes in your code and checks each one worked.
+8. **Your list:** steps only you can do (like submitting your sitemap to Google), with exact instructions.
 
-- **Your code:** Next.js (App and Pages Router) in depth; Astro, Nuxt, SvelteKit, Remix, Gatsby, Hugo, Jekyll and plain HTML through the live scan and generic fix guides. Monorepos and sites in folders like `web/` are detected.
-- **Your live site:** up to 50 pages, 4 at a time, respecting robots.txt.
-- **Optional, in `.findable/inputs/`:** Search Console exports (Page indexing, Performance), plus the results files the agent writes for AI visibility and keyword research.
+## What you'll see
 
-## Results
+```
+https://example.com: checked 24 pages (your code and live site)
+Found 5 things to improve (3 important).
 
-Saved in `.findable/` in your project:
-- `report.html`: the full report, grouped in plain language, with technical details per issue
-- `findings.json`: each issue's state across runs (new, open, fixed, came back, dismissed)
-- `config.json`: your confirmed site and URL
-- `visibility.json`, `keywords.json`: the latest optional checks and their history
-- `inputs/`: Search Console exports and search results
+Can Google and AI find your pages?  (2)
+  ✗ The page /pricing is hidden from Google by a setting in the code.
+  ✗ There's no working sitemap, the list that tells search engines which pages exist.
 
-## Commands
+Can AI tools read your pages?  (1)
+  ✗ Your hosting or firewall blocks AI and search tools, even though browsers get through.
 
-The agent runs these for you. They're listed for reference and for running findable by hand from your project root (`CLI=path/to/skills/findable/cli`, then `uv run --project $CLI findable …`).
+Plus 6 minor improvements (low impact), folded away in the report.
+Full report: .findable/report.html
+```
+
+## Why not just ask your coding assistant?
+
+Your assistant is great at fixing a problem once it knows what it is. findable is what finds it:
+
+- **It visits your live site** as each AI robot and compares with a normal browser. That's how it spots hosting blocks you can't see in the code.
+- **It knows what to look for:** the full checklist is built in.
+- **Same checks every time,** and it re-checks every fix instead of just saying "done".
+- **Tested on 12 real websites,** with every result checked by hand. [See the results](../../evals/findable/RESULTS.md).
+
+## What it won't do
+
+- Change anything without your yes, or publish anything for you.
+- Sign in to Google, your hosting or other dashboards. It gives you the steps instead.
+- Keyword search numbers, backlinks or page speed. Those need paid data or other tools.
+
+## Install
+
+Needs [uv](https://docs.astral.sh/uv/getting-started/installation/). Then in Claude Code:
+
+```
+/plugin marketplace add Nithish-Yenaganti/sow
+/plugin install sow@sow
+```
+
+Or for any assistant: `npx skills add Nithish-Yenaganti/sow`
+
+## Where results go
+
+In your project, in `.findable/`:
+
+| File | What's in it |
+|---|---|
+| `report.html` | The full report, open it in your browser |
+| `findings.json` | Every issue and whether it's new, fixed or came back |
+| `config.json` | The site and address you confirmed |
+| `inputs/` | Optional Search Console downloads |
+
+<details>
+<summary><b>Commands (for developers)</b></summary>
+
+Your assistant runs these for you. To run them yourself, from your project folder: `uv run --project path/to/skills/findable/cli findable <command>`.
 
 | Command | What it does |
 |---|---|
-| `findable plan` | Says which site and URL a scan would check, without scanning |
-| `findable scan` | Scans code and live site, updates findings, writes the report |
-| `findable report` | Shows the latest results without scanning |
-| `findable verify --ids …` | Re-checks only what the given findings touch |
-| `findable dismiss <id> --reason …` | Marks a finding as intentional |
-| `findable visibility record\|show` | Stores or shows the AI visibility check |
-| `findable keywords record\|show` | Stores or shows the keyword research |
+| `findable plan` | Says what a scan would check, without scanning |
+| `findable scan` | Scans code and live site, writes the report |
+| `findable report` | Shows the latest results |
+| `findable verify --ids …` | Re-checks specific issues |
+| `findable dismiss <id> --reason …` | Marks an issue as intentional |
+| `findable visibility record\|show` | AI mentions check |
+| `findable keywords record\|show` | Keyword research |
 
-Add `--json` for machine-readable output. Exit codes: `0` ok, `1` error, `2` verify found failures, `3` needs your input.
+Add `--json` for machine-readable output.
 
-## Develop
+**Develop:**
 
 ```bash
-cd skills/findable/cli   # from the repo root
+cd skills/findable/cli
 uv run pytest
 uv run findable scan --path ../../../tests/findable/fixtures/static-broken --url none
 ```
 
-Real-site evals: `uv run --project skills/findable/cli python evals/findable/run.py` from the repo root.
+Real-site evals, from the repo root: `uv run --project skills/findable/cli python evals/findable/run.py`
 
 To release, bump the version in `cli/pyproject.toml`, `cli/src/findable/__init__.py` and the root `.claude-plugin/marketplace.json`.
 
-## Roadmap
-
-A rendered-page check (what a real browser shows vs. the raw HTML), page speed, IndexNow, and more framework fix guides (Astro, Nuxt, SvelteKit, WordPress).
+</details>
