@@ -1,0 +1,349 @@
+{
+  "_about": "Real open-source projects, fetched at pinned commits. must = fnmatch patterns over finding fingerprints that the scan has to report (a real gap in that code); must_not = patterns it must never report (a false alarm). Every expectation was checked by reading the code at the pinned commit; the reason is in 'why'. Profiles are fixed answers to the intake questions, chosen to match what each project is. known_gaps = real gaps the scan misses today: listed in RESULTS.md, not counted as failures, to fix later.",
+  "repos": [
+    {
+      "name": "saas-starter",
+      "url": "https://github.com/nextjs/saas-starter.git",
+      "sha": "6e33e58b1e553a41fe22e6b941a7229a002de361",
+      "kind": "SaaS starter: Stripe subscriptions, Drizzle, own auth",
+      "profile": {
+        "categories": [
+          "saas"
+        ],
+        "regions": [
+          "eu_uk",
+          "us_ca"
+        ],
+        "audience": "consumers",
+        "minors": "adults",
+        "charging": "subscription",
+        "sensitive": [
+          "none"
+        ]
+      },
+      "must": [
+        "privacy.policy_missing",
+        "terms.missing",
+        "terms.no_clickwrap|app/(login)/login.tsx",
+        "payments.renewal_disclosure",
+        "payments.refund_missing",
+        "rights.export_missing"
+      ],
+      "must_not": [
+        "rights.delete_missing",
+        "rights.correct_missing",
+        "payments.cancel_missing",
+        "cookies.*"
+      ],
+      "why": {
+        "privacy.policy_missing": "No privacy page anywhere in app/.",
+        "terms.missing": "No terms page.",
+        "terms.no_clickwrap|app/(login)/login.tsx": "login.tsx renders the sign-up form (mode 'signup') with no link to terms or privacy.",
+        "payments.renewal_disclosure": "lib/payments/stripe.ts creates a subscription with a 14-day trial; no page says it renews or how to cancel.",
+        "payments.refund_missing": "Charges via Stripe, no refund policy.",
+        "rights.export_missing": "No way to download account data.",
+        "rights.delete_missing": "deleteAccount action in app/(login)/actions.ts.",
+        "rights.correct_missing": "updateAccount action, used by dashboard/general/page.tsx.",
+        "payments.cancel_missing": "Stripe billing portal in lib/payments/stripe.ts.",
+        "cookies.*": "No trackers in the code."
+      },
+      "known_gaps": {}
+    },
+    {
+      "name": "nextjs-subscription-payments",
+      "url": "https://github.com/vercel/nextjs-subscription-payments.git",
+      "sha": "bdd0813206e47e6b218d42f15a7976c8a0d3c3eb",
+      "kind": "SaaS: Stripe subscriptions, Supabase auth",
+      "profile": {
+        "categories": [
+          "saas"
+        ],
+        "regions": [
+          "eu_uk",
+          "us_ca"
+        ],
+        "audience": "consumers",
+        "minors": "adults",
+        "charging": "subscription",
+        "sensitive": [
+          "none"
+        ]
+      },
+      "must": [
+        "privacy.policy_missing",
+        "terms.missing",
+        "terms.no_clickwrap|components/ui/AuthForms/Signup.tsx",
+        "rights.delete_missing",
+        "payments.renewal_disclosure"
+      ],
+      "must_not": [
+        "payments.cancel_missing",
+        "terms.no_clickwrap|*EmailSignIn*",
+        "terms.no_clickwrap|*ForgotPassword*"
+      ],
+      "why": {
+        "privacy.policy_missing": "No privacy page.",
+        "terms.missing": "No terms page.",
+        "terms.no_clickwrap|components/ui/AuthForms/Signup.tsx": "Sign-up form has no terms or privacy link.",
+        "rights.delete_missing": "Only Stripe product/price records are deleted (utils/supabase/admin.ts); no account deletion.",
+        "payments.renewal_disclosure": "Subscription pricing with no renewal wording.",
+        "payments.cancel_missing": "billingPortal session in utils/stripe/server.ts.",
+        "terms.no_clickwrap|*EmailSignIn*": "Sign-in form; it only links to /signin/signup.",
+        "terms.no_clickwrap|*ForgotPassword*": "Password reset form, not sign-up."
+      },
+      "known_gaps": {}
+    },
+    {
+      "name": "taxonomy",
+      "url": "https://github.com/shadcn-ui/taxonomy.git",
+      "sha": "298a8857c7128a0d121e7f699dfd729f23b3966d",
+      "kind": "SaaS + blog: Stripe, NextAuth, Prisma",
+      "profile": {
+        "categories": [
+          "saas",
+          "content"
+        ],
+        "regions": [
+          "eu_uk",
+          "us_ca"
+        ],
+        "audience": "consumers",
+        "minors": "adults",
+        "charging": "subscription",
+        "sensitive": [
+          "none"
+        ]
+      },
+      "must": [
+        "privacy.policy_outdated|Stripe",
+        "privacy.policy_outdated|Postmark",
+        "rights.delete_missing",
+        "payments.renewal_disclosure"
+      ],
+      "must_not": [
+        "claims.*|guaranteed",
+        "assets.ui_kit|*",
+        "privacy.policy_missing",
+        "terms.missing",
+        "payments.cancel_missing",
+        "cookies.no_consent|*"
+      ],
+      "why": {
+        "privacy.policy_outdated|Stripe": "content/pages/privacy.mdx is lorem ipsum and names no service, but the app uses Stripe.",
+        "privacy.policy_outdated|Postmark": "Same policy; sign-in emails go through Postmark (lib/auth.ts).",
+        "rights.delete_missing": "No account deletion.",
+        "payments.renewal_disclosure": "Pro plan is a Stripe subscription; pricing has no renewal wording.",
+        "claims.*|guaranteed": "'three is guaranteed to be a bad idea' in sample blog prose, not a marketing claim.",
+        "assets.ui_kit|*": "Used to match Postmark's 'TemplateModel' in lib/auth.ts.",
+        "privacy.policy_missing": "content/pages/privacy.mdx exists.",
+        "terms.missing": "content/pages/terms.mdx exists.",
+        "payments.cancel_missing": "Stripe billing portal and cancel_at_period_end in the billing page.",
+        "cookies.no_consent|*": "Only Vercel Analytics, which sets no cookies."
+      },
+      "known_gaps": {}
+    },
+    {
+      "name": "chatbot",
+      "url": "https://github.com/vercel/chatbot.git",
+      "sha": "a8989b522fa3672a2ae52f053105e40993b36ca1",
+      "kind": "AI chat app with accounts",
+      "profile": {
+        "categories": [
+          "ai",
+          "saas"
+        ],
+        "regions": [
+          "eu_uk",
+          "us_ca"
+        ],
+        "audience": "consumers",
+        "minors": "adults",
+        "charging": "none",
+        "sensitive": [
+          "none"
+        ]
+      },
+      "must": [
+        "ai.disclosure_missing|*",
+        "rights.delete_missing",
+        "privacy.policy_missing",
+        "terms.missing"
+      ],
+      "must_not": [
+        "ugc.*",
+        "payments.*",
+        "cookies.no_consent|*"
+      ],
+      "why": {
+        "ai.disclosure_missing|*": "No text anywhere tells users replies are AI-generated or can be wrong.",
+        "rights.delete_missing": "Users can delete chats (deleteAllChatsByUserId) but not their account.",
+        "privacy.policy_missing": "No privacy page.",
+        "terms.missing": "No terms page.",
+        "ugc.*": "File uploads are private chat attachments, and the profile isn't a marketplace.",
+        "payments.*": "Free app, no payments.",
+        "cookies.no_consent|*": "Only Vercel Analytics (cookieless)."
+      },
+      "known_gaps": {
+        "terms.no_clickwrap": "app/(auth)/register/page.tsx shows a sign-up form with no terms link, but its inputs live in components/chat/auth-form.tsx, so the scan doesn't see it."
+      }
+    },
+    {
+      "name": "chatbot-ui",
+      "url": "https://github.com/mckaywrigley/chatbot-ui.git",
+      "sha": "81328b61d2a4ab597a7a057be70e785cf756d9f8",
+      "kind": "AI chat app, Supabase, file uploads",
+      "profile": {
+        "categories": [
+          "ai",
+          "saas"
+        ],
+        "regions": [
+          "eu_uk",
+          "us_ca"
+        ],
+        "audience": "consumers",
+        "minors": "adults",
+        "charging": "none",
+        "sensitive": [
+          "none"
+        ]
+      },
+      "must": [
+        "ai.disclosure_missing|*",
+        "ai.provider_terms|OpenAI",
+        "terms.no_clickwrap|app/[locale]/login/page.tsx",
+        "rights.delete_missing"
+      ],
+      "must_not": [
+        "licenses.unknown|*",
+        "a11y.img_alt",
+        "ugc.*"
+      ],
+      "why": {
+        "ai.disclosure_missing|*": "'AI assistant' only appears inside system prompts sent to the model; nothing tells the user.",
+        "ai.provider_terms|OpenAI": "Uses the openai SDK.",
+        "terms.no_clickwrap|app/[locale]/login/page.tsx": "The login page calls supabase signUp with no terms link.",
+        "rights.delete_missing": "No account deletion.",
+        "licenses.unknown|*": "package-lock.json has no license fields at all (older npm); used to report 893 'unknown' packages.",
+        "a11y.img_alt": "Every <Image> sets alt, on a later line after an arrow function in src.",
+        "ugc.*": "Uploads are private files for chat, not public content."
+      },
+      "known_gaps": {}
+    },
+    {
+      "name": "commerce",
+      "url": "https://github.com/vercel/commerce.git",
+      "sha": "f7521d57d29f0eb3d23c1399cf9bb299d61fcd21",
+      "kind": "Store (Shopify headless)",
+      "profile": {
+        "categories": [
+          "ecommerce"
+        ],
+        "regions": [
+          "eu_uk",
+          "us_ca"
+        ],
+        "audience": "consumers",
+        "minors": "adults",
+        "charging": "one_time",
+        "sensitive": [
+          "none"
+        ]
+      },
+      "must": [
+        "payments.tax",
+        "vendors.dpa"
+      ],
+      "must_not": [
+        "payments.renewal_disclosure",
+        "payments.cancel_missing",
+        "a11y.img_alt"
+      ],
+      "why": {
+        "payments.tax": "Sells through Shopify.",
+        "vendors.dpa": "Customer data goes to Shopify (SHOPIFY_STORE_DOMAIN).",
+        "payments.renewal_disclosure": "One-time purchases, no subscriptions.",
+        "payments.cancel_missing": "No subscriptions.",
+        "a11y.img_alt": "components/grid/tile.tsx passes alt through {...props}."
+      },
+      "known_gaps": {},
+      "notes": "Privacy, terms and refund pages are managed in Shopify and linked through Shopify menus, which the code can't show, so those findings are left out of the expectations either way."
+    },
+    {
+      "name": "tailwind-nextjs-starter-blog",
+      "url": "https://github.com/timlrx/tailwind-nextjs-starter-blog.git",
+      "sha": "b45bef66b40c63b6f57c15ee8cd090682238df4c",
+      "kind": "Blog with optional analytics",
+      "profile": {
+        "categories": [
+          "content"
+        ],
+        "regions": [
+          "eu_uk",
+          "us_ca"
+        ],
+        "audience": "consumers",
+        "minors": "adults",
+        "charging": "none",
+        "sensitive": [
+          "none"
+        ]
+      },
+      "must": [
+        "privacy.policy_missing"
+      ],
+      "must_not": [
+        "cookies.no_consent|*",
+        "a11y.img_alt",
+        "claims.*"
+      ],
+      "why": {
+        "privacy.policy_missing": "Analytics configured in data/siteMetadata.js and no privacy page.",
+        "cookies.no_consent|*": "Default analytics is Umami, which sets no cookies.",
+        "a11y.img_alt": "The only '<img>' is a mention inside backticks in a blog post.",
+        "claims.*": "No marketing claims."
+      },
+      "known_gaps": {}
+    },
+    {
+      "name": "precedent",
+      "url": "https://github.com/steven-tey/precedent.git",
+      "sha": "3be40205d7cdf56082cd284f07f12251b9208f79",
+      "kind": "Landing-page starter",
+      "profile": {
+        "categories": [
+          "content"
+        ],
+        "regions": [
+          "eu_uk",
+          "us_ca"
+        ],
+        "audience": "consumers",
+        "minors": "adults",
+        "charging": "none",
+        "sensitive": [
+          "none"
+        ]
+      },
+      "must": [
+        "rights.export_missing",
+        "privacy.policy_missing",
+        "terms.missing",
+        "identity.contact_missing"
+      ],
+      "must_not": [
+        "rights.delete_missing",
+        "rights.correct_missing"
+      ],
+      "why": {
+        "rights.export_missing": "Clerk has no self-serve data download.",
+        "privacy.policy_missing": "No privacy page.",
+        "terms.missing": "No terms page.",
+        "identity.contact_missing": "No contact email or page.",
+        "rights.delete_missing": "Clerk's <UserButton> (components/layout/navbar.tsx) includes Delete account, once it's enabled in the Clerk dashboard.",
+        "rights.correct_missing": "Clerk's <UserButton> includes profile editing."
+      },
+      "known_gaps": {}
+    }
+  ]
+}

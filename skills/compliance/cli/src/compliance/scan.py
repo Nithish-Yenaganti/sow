@@ -63,6 +63,8 @@ VENDORS: dict[str, dict] = {
     "paddle": dict(name="Paddle", kind="payments", pkgs=["@paddle/paddle-js", "@paddle/paddle-node-sdk"], pats=[r"cdn\.paddle\.com"]),
     "lemonsqueezy": dict(name="Lemon Squeezy", kind="payments", pkgs=["@lemonsqueezy/lemonsqueezy.js"], pats=[r"app\.lemonsqueezy\.com"]),
     "polar": dict(name="Polar", kind="payments", pkgs=["@polar-sh/sdk", "@polar-sh/nextjs"], pats=[]),
+    "shopify": dict(name="Shopify", kind="payments", pkgs=["@shopify/hydrogen", "@shopify/shopify-api", "@shopify/storefront-api-client"],
+                    pats=[r"SHOPIFY_STORE_DOMAIN", r"\.myshopify\.com"]),
     "paypal": dict(name="PayPal", kind="payments", pkgs=["@paypal/react-paypal-js", "@paypal/paypal-js"], pats=[r"paypal\.com/sdk/js"]),
     "openai": dict(name="OpenAI", kind="ai", pkgs=["openai", "@ai-sdk/openai"], py=["openai"], pats=[]),
     "anthropic": dict(name="Anthropic (Claude)", kind="ai", pkgs=["@anthropic-ai/sdk", "@ai-sdk/anthropic"], py=["anthropic"], pats=[]),
@@ -149,7 +151,8 @@ DATA_DEFAULTS = {
 CLAIM_HIGH = re.compile(r"\b((?:GDPR|HIPAA|CCPA|SOC\s?2|ISO\s?27001|PCI(?:[- ]DSS)?)[- ](?:compliant|certified|ready|approved)|fully compliant)\b", re.I)
 CLAIM_MED = re.compile(
     r"(100% secure|bank[- ](?:level|grade) (?:security|encryption)|military[- ]grade|unhackable|completely secure|zero risk"
-    r"|#1\b|number one\b|world'?s (?:first|best|leading|fastest)|\bguaranteed?\b|\bfree forever\b"
+    r"|#1\b|number one\b|world'?s (?:first|best|leading|fastest)|\bfree forever\b"
+    r"|\bguaranteed (?:results|returns|uptime|delivery|approval|income|to (?:work|rank|grow|increase))|\b100% guaranteed"
     r"|\b(?:trusted|used|loved) by (?:over |more than )?[\d,.]+\s*[kKmM]?\+?\s*(?:users|customers|teams|companies|developers|people|businesses)"
     r"|\b\d+(?:\.\d+)?[xX%]\s+(?:faster|cheaper|more|better|increase))", re.I)
 ADVICE = {
@@ -239,6 +242,30 @@ def _grep(pj: Project, pattern: str | re.Pattern, files: list[Path], flags=re.I)
             line = t.count("\n", 0, m.start()) + 1
             hits.append((f, line, m.group(0)))
     return hits
+
+
+def _imgs_without_alt(text: str) -> list[int]:
+    """Line numbers of <img>/<Image> tags with a src but no alt. Skips over {...} so JSX arrow functions don't end the tag."""
+    out = []
+    for m in re.finditer(r"<(img|Image)\b", text):
+        i, depth, quote = m.end(), 0, ""
+        while i < len(text) and i - m.end() < 2000:
+            c = text[i]
+            if quote:
+                quote = "" if c == quote else quote
+            elif c in "\"'`" and depth == 0:
+                quote = c
+            elif c == "{":
+                depth += 1
+            elif c == "}":
+                depth -= 1
+            elif c == ">" and depth == 0:
+                break
+            i += 1
+        tag = text[m.start(): i + 1]
+        if re.search(r"\bsrc\s*=", tag) and not re.search(r"\balt\s*=", tag) and "{...props}" not in tag:
+            out.append(text.count("\n", 0, m.start()) + 1)
+    return out
 
 
 def _loc(h: tuple[Path, int, str]) -> str:
@@ -422,15 +449,19 @@ def scan(root: Path, profile: dict) -> dict:
     # ---- accounts: rights & terms
     if sig["accounts"]:
         code = pj.by_ext(UI_EXT | {".py", ".rb", ".php"})
-        if not _grep(pj, r"delete[\s_-]?(my[\s_-]?|your[\s_-]?)?account|deleteAccount|deleteUser|account/delete|close[\s_-]?account"
+        # Clerk's <UserButton>/<UserProfile> include "Delete account" and profile editing out of the box
+        hosted_account = "clerk" in vendors and bool(_grep(pj, r"<(UserButton|UserProfile)\b", ui))
+        if not hosted_account and not _grep(pj, r"delete[\s_-]?(my[\s_-]?|your[\s_-]?)?account|deleteAccount|deleteUser|account/delete|close[\s_-]?account"
                          r"|user\.delete\(|users\.delete|deleteMany\(\s*\{\s*where:\s*\{\s*userId", code):
             F.append(Finding("rights.delete_missing"))
         if not _grep(pj, r"export[\s_-]?(my[\s_-]?|your[\s_-]?|user[\s_-]?)?data|download[\s_-](my|your)[\s_-]data|exportUserData|dataExport", code):
             F.append(Finding("rights.export_missing"))
-        if not _grep(pj, r"(edit|update)[\s_-]?profile|account[\s_-]settings|settings/(profile|account)|updateUser|user\.update\(", code):
+        if not hosted_account and not _grep(pj, r"(edit|update)[\s_-]?(profile|account)|account[\s_-]settings|settings/(profile|account)|updateUser|user\.update\(", code):
             F.append(Finding("rights.correct_missing"))
-        signup = [f for f in ui if re.search(r"sign-?up|register|join|create-account|onboarding", f.as_posix(), re.I)
-                  and _grep(pj, FIELD_PATS["email"] + "|" + FIELD_PATS["password"], [f])]
+        signup = [f for f in ui if _grep(pj, FIELD_PATS["email"] + "|" + FIELD_PATS["password"], [f]) and (
+                  re.search(r"sign-?up|register|join|create-account|onboarding", f.as_posix(), re.I) or
+                  re.search(r"\bsignUp\b|sign_up\(|createUser\b|mode\s*={2,3}\s*['\"]signup", pj.text(f)) or
+                  re.search(r"create (?:an |your )?account", pj.text(f), re.I))]
         no_terms = [f.as_posix() for f in signup if not re.search(r"terms|privacy|agree", pj.text(f), re.I)]
         if no_terms:
             F.append(Finding("terms.no_clickwrap", no_terms[0], files=no_terms))
@@ -459,7 +490,7 @@ def scan(root: Path, profile: dict) -> dict:
         names = ", ".join(v["name"] for v in ai_v) or "an AI model"
         if not _grep(pj, r"\bAI[- ]generated\b|generated (by|with|using) AI|powered by (AI|GPT|Claude|Gemini)|AI can make mistakes"
                          r"|\bAI\b.{0,40}\b(may|can) (make mistakes|be (wrong|inaccurate))|(may|can) (be inaccurate|contain errors)"
-                         r"|you'?re (chatting|talking) (with|to) an? AI|\bAI assistant\b", content):
+                         r"|you'?re (chatting|talking) (with|to) an? AI", content):
             F.append(Finding("ai.disclosure_missing", names))
         F.append(Finding("ai.output_ip"))
         for v in ai_v:
@@ -510,7 +541,7 @@ def scan(root: Path, profile: dict) -> dict:
                                               for g in pj.files if g.parent == f.parent)]
     if unlicensed:
         F.append(Finding("assets.font_files", detail=str(len(unlicensed)), files=[f.as_posix() for f in unlicensed]))
-    for h in _grep(pj, r"tailwindui\.com|tailwind plus|themeforest|envato|creative-tim|uideck|templatemo", ui + pj.by_ext({".css"}))[:3]:
+    for h in _grep(pj, r"tailwindui\.com|\btailwind plus\b|themeforest\.net|\benvato\b|creative-tim\.com|\buideck\b|templatemo\.com", ui + pj.by_ext({".css"}))[:3]:
         F.append(Finding("assets.ui_kit", h[0].as_posix(), files=[_loc(h)]))
 
     # ---- claims
@@ -574,7 +605,7 @@ def scan(root: Path, profile: dict) -> dict:
         F.append(Finding("security.txt_missing"))
 
     # ---- accessibility & identity
-    noalt = _grep(pj, r"<(img|Image)\b(?![^>]*\balt\s*=)[^>]*?/?>", [f for f in ui if f.suffix in CONTENT_EXT])
+    noalt = [(f, line, "") for f in ui if f.suffix in CONTENT_EXT for line in _imgs_without_alt(pj.text(f))]
     if noalt:
         F.append(Finding("a11y.img_alt", detail=str(len(noalt)), files=sorted({_loc(h) for h in noalt})))
     for f in [f for f in ui if f.suffix in (".html", ".htm") or re.search(r"(^|/)(app/)?layout\.(t|j)sx$|_document\.(t|j)sx$", f.as_posix())]:

@@ -84,13 +84,12 @@ def read_npm(pkg_dir: Path) -> tuple[list[Dep], str | None]:
             data = json.loads(lock.read_text())
         except (OSError, ValueError):
             data = {}
-        for path, meta in (data.get("packages") or {}).items():
-            if not path.startswith("node_modules/"):
-                continue
-            name = path.split("node_modules/")[-1]
-            lic = _lic_field(meta)
-            out.append(Dep(name, str(meta.get("version", "")), lic, bool(meta.get("dev")), classify(lic)))
-        if out:
+        pkgs = {k: v for k, v in (data.get("packages") or {}).items() if k.startswith("node_modules/")}
+        # Older npm versions don't write license fields; then the lockfile has no license data at all.
+        if pkgs and sum(1 for m in pkgs.values() if "license" in m) >= len(pkgs) / 2:
+            for path, meta in pkgs.items():
+                lic = _lic_field(meta)
+                out.append(Dep(path.split("node_modules/")[-1], str(meta.get("version", "")), lic, bool(meta.get("dev")), classify(lic)))
             return out, None
     nm = pkg_dir / "node_modules"
     if nm.is_dir():
@@ -103,7 +102,8 @@ def read_npm(pkg_dir: Path) -> tuple[list[Dep], str | None]:
             out.append(Dep(name, str(meta.get("version", "")), lic, name not in prod, classify(lic)))
         if out:
             return out, None
-    return [], "no package-lock.json or node_modules"
+    return [], ("package-lock.json has no license data and node_modules isn't installed" if lock.exists()
+                else "no package-lock.json with licenses, and node_modules isn't installed")
 
 
 def read_python_names(root: Path) -> list[str]:

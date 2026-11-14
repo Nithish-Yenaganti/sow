@@ -61,6 +61,8 @@ It asks about your business first (what you build, where your users are, whether
 
 > **It isn't a lawyer.** It never calls your site "compliant", every policy starts as a draft for a lawyer to review, each check cites its law or official guidance, and it flags what needs legal advice.
 
+**Tested on 8 open-source projects** (SaaS starters, AI chat apps, a store, a blog) at pinned commits, every expected result checked by reading the code: [see the results](evals/compliance/RESULTS.md).
+
 ## Install
 
 Requires [uv](https://docs.astral.sh/uv/getting-started/installation/).
