@@ -136,72 +136,52 @@ def scan(
         typer.echo(report.terminal(run, items, delta, str(rp.relative_to(root))))
 
 
-@app.command(name="visibility")
-def visibility_cmd(
-    action: str = typer.Argument(..., help="record: store web-search results · show: print the latest check"),
-    file: Optional[str] = typer.Option(None, "--file", help="Results JSON written by the agent (for record)"),
-    site: Optional[str] = typer.Option(None, "--site", help="Your production domain (default: found in code or the scanned URL)"),
-    as_json: bool = typer.Option(False, "--json"),
-    path: str = typer.Option("."),
-) -> None:
-    """AI visibility: do search results for your questions include your site?"""
-    from findable import visibility as vis_mod
+def _search_check(module, label: str, text, action: str, file: Optional[str], site: Optional[str],
+                  as_json: bool, path: str) -> None:
+    """record | show for a web-search check (AI visibility, keyword research)."""
     root = _root(path)
     if action == "show":
-        latest = vis_mod.load(root)
+        latest = module.load(root)
         if latest is None:
-            typer.echo("No AI visibility check yet.")
+            typer.echo(f"No {label} yet.")
             raise typer.Exit(1)
-        _print_json(latest) if as_json else typer.echo(_vis_text(latest))
+        _print_json(latest) if as_json else typer.echo(text(latest))
         return
     if action != "record" or not file:
-        typer.echo("Use: findable visibility record --file results.json   or   findable visibility show")
+        typer.echo(f"Use: findable {module.NAME} record --file results.json   or   findable {module.NAME} show")
         raise typer.Exit(1)
     site_url = site or _production_url(root)
     if not site_url:
         typer.echo("Which domain is yours? Re-run with --site example.com")
         raise typer.Exit(1)
     try:
-        latest = vis_mod.record(root, Path(file), site_url)
+        latest = module.record(root, Path(file), site_url)
     except (OSError, ValueError) as e:
         typer.echo(f"Could not read the results: {e}")
         raise typer.Exit(1)
-    _print_json({"status": "ok", "visibility": latest, "next": "run `findable scan` to add these to the report"}) \
-        if as_json else typer.echo(_vis_text(latest) + "\nNext: run `findable scan` to add these to the report.")
+    nxt = "run `findable scan` to add these to the report"
+    _print_json({"status": "ok", module.NAME: latest, "next": nxt}) if as_json else typer.echo(f"{text(latest)}\nNext: {nxt}.")
+
+
+_ACTION = typer.Argument(..., help="record: store the agent's web-search results · show: print the latest")
+_FILE = typer.Option(None, "--file", help="Results JSON written by the agent (for record)")
+_SITE = typer.Option(None, "--site", help="Your production domain (default: found in code or the scanned URL)")
+
+
+@app.command(name="visibility")
+def visibility_cmd(action: str = _ACTION, file: Optional[str] = _FILE, site: Optional[str] = _SITE,
+                   as_json: bool = typer.Option(False, "--json"), path: str = typer.Option(".")) -> None:
+    """AI visibility: do search results for your questions include your site?"""
+    from findable import visibility
+    _search_check(visibility, "AI visibility check", _vis_text, action, file, site, as_json, path)
 
 
 @app.command(name="keywords")
-def keywords_cmd(
-    action: str = typer.Argument(..., help="record: store web-search keyword results · show: print the latest research"),
-    file: Optional[str] = typer.Option(None, "--file", help="Results JSON written by the agent (for record)"),
-    site: Optional[str] = typer.Option(None, "--site", help="Your production domain (default: found in code or the scanned URL)"),
-    as_json: bool = typer.Option(False, "--json"),
-    path: str = typer.Option("."),
-) -> None:
+def keywords_cmd(action: str = _ACTION, file: Optional[str] = _FILE, site: Optional[str] = _SITE,
+                 as_json: bool = typer.Option(False, "--json"), path: str = typer.Option(".")) -> None:
     """Keyword research: for each search, do you show up, and who does instead?"""
-    from findable import keywords as kw_mod
-    root = _root(path)
-    if action == "show":
-        latest = kw_mod.load(root)
-        if latest is None:
-            typer.echo("No keyword research yet.")
-            raise typer.Exit(1)
-        _print_json(latest) if as_json else typer.echo(_kw_text(latest))
-        return
-    if action != "record" or not file:
-        typer.echo("Use: findable keywords record --file keywords.json   or   findable keywords show")
-        raise typer.Exit(1)
-    site_url = site or _production_url(root)
-    if not site_url:
-        typer.echo("Which domain is yours? Re-run with --site example.com")
-        raise typer.Exit(1)
-    try:
-        latest = kw_mod.record(root, Path(file), site_url)
-    except (OSError, ValueError) as e:
-        typer.echo(f"Could not read the results: {e}")
-        raise typer.Exit(1)
-    _print_json({"status": "ok", "keywords": latest, "next": "run `findable scan` to add these to the report"}) \
-        if as_json else typer.echo(_kw_text(latest) + "\nNext: run `findable scan` to add these to the report.")
+    from findable import keywords
+    _search_check(keywords, "keyword research", _kw_text, action, file, site, as_json, path)
 
 
 def _kw_text(k: dict) -> str:

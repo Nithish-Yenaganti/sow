@@ -30,7 +30,7 @@ def analyze_html(html: str, page_url: str = "/") -> dict:
         "description": None, "canonical": None, "noindex": False,
         "h1_count": 0, "images_no_alt": [], "ld_types": [], "ld_errors": [],
         "links": [], "link_urls": {}, "word_count": 0, "questions_without_answer": [],
-        "has_gsc_verification": False, "has_clarity": False,
+        "has_gsc_verification": False,
     }
     for m in tree.css("meta"):
         name = (m.attributes.get("name") or m.attributes.get("property") or "").lower()
@@ -56,10 +56,6 @@ def analyze_html(html: str, page_url: str = "/") -> dict:
             if isinstance(it, dict):
                 t = it.get("@type")
                 facts["ld_types"] += t if isinstance(t, list) else [t] if t else []
-    for s in tree.css("script"):
-        src = (s.attributes.get("src") or "") + (s.text() or "")[:2000]
-        if "clarity.ms" in src:
-            facts["has_clarity"] = True
     facts["h1_count"] = len(tree.css("h1"))
     for img in tree.css("img"):
         if "alt" not in img.attributes:        # a bare `alt` / alt="" is valid (decorative image)
@@ -157,10 +153,8 @@ def _next_page_facts(project_root: Path, rel_file: str) -> dict:
     layouts = [l for l in _layout_chain(project_root, f) if l != f]
     layout_texts = {str(l.relative_to(project_root)): _meta_text(_strip_comments(l.read_text(encoding="utf-8", errors="ignore")))
                     for l in layouts}
-    own_meta = bool(HAS_METADATA.search(text)) or "next/head" in text
     facts: dict = {
         "client_rendered": bool(USE_CLIENT.search(text)),
-        "own_metadata": own_meta,
         "title": "present" if TITLE_RE.search(meta) else None,
         "description": "present" if DESC_RE.search(meta) else None,
         "canonical": "present" if CANON_RE.search(meta) else None,
@@ -260,7 +254,6 @@ def scan_code(app: App, project_root: str | Path) -> dict:
         pages[r.path] = facts
     site = _site_files(app_dir, root)
     site["orphans"] = sorted(_orphans(app, root)) if app.routes else []
-    site["dynamic_routes"] = [r.path for r in app.routes if r.dynamic]
     site["framework"] = app.framework
     # snippet presence across source (Clarity / GSC verification meta)
     site["has_gsc_verification"] = any(p.get("has_gsc_verification") for p in pages.values())

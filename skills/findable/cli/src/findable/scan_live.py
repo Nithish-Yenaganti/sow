@@ -130,7 +130,6 @@ async def _scan(base: str, paths: list[str], max_pages: int, concurrency: int) -
     async with httpx.AsyncClient(follow_redirects=True, timeout=15.0, limits=limits) as client:
         # Follow the homepage redirect first (example.com -> www.example.com, http -> https),
         # so every later URL is built on the address the site actually serves.
-        given = base
         home = await _get(client, base + "/", BROWSER_UA)
         if home.get("status") is not None and home.get("final_url"):
             fu = urlparse(home["final_url"])
@@ -141,7 +140,9 @@ async def _scan(base: str, paths: list[str], max_pages: int, concurrency: int) -
         host = site_host(parsed.netloc)
         origin = f"{parsed.scheme}://{parsed.netloc}"
         prefix = parsed.path.rstrip("/")            # e.g. "/repo" for user.github.io/repo
-        site: dict = {"base": base, "given_url": given, "base_path": prefix, "reachable": True}
+        site: dict = {"base": base, "reachable": True}
+        # reuse the homepage we just fetched instead of fetching it again (its redirects belong to the given URL)
+        cached = {base + "/": dict(home, redirects=[])} if home.get("status") == 200 else {}
 
         # robots.txt always lives at the origin root
         rb = await _get(client, origin + "/robots.txt", OWN_UA)
@@ -198,8 +199,10 @@ async def _scan(base: str, paths: list[str], max_pages: int, concurrency: int) -
             if parser and not parser.can_fetch(url, "findable"):
                 pages[path] = {"status": None, "skipped": "disallowed for findable in robots.txt", "source": "live"}
                 return
-            async with sem:
-                res = await _get(client, url, BROWSER_UA)
+            res = cached.pop(url, None)
+            if res is None:
+                async with sem:
+                    res = await _get(client, url, BROWSER_UA)
             facts: dict = {"status": res.get("status"), "redirects": res.get("redirects", []),
                            "final_url": res.get("final_url"), "source": "live"}
             if res.get("error"):
@@ -251,20 +254,23 @@ async def _scan(base: str, paths: list[str], max_pages: int, concurrency: int) -
         # AI-bot access: homepage + up to 2 other OK pages, each bot UA vs. a browser baseline
         sample = ["/"] + [p for p, f in pages.items()
                           if p != "/" and f.get("status") == 200 and "title" in f and not f.get("redirected_off_host")][:2]
-        site["bot_access"] = {}
-        for name, (ua, purpose) in AI_BOTS.items():
-            results = []
-            for p in sample:
-                base_status = pages.get(p, {}).get("status")
+        async def probe(ua: str, p: str) -> dict:
+            async with sem:
                 r = await _get(client, url_for(p), ua)
-                txt = r.get("text", "")[:20000]
-                baseline_markers = set(pages.get(p, {}).get("_markers", []))
-                challenged = any(m.lower() in txt.lower() and m not in baseline_markers for m in CHALLENGE_MARKERS)
-                blocked = (base_status == 200 and (r.get("status") in (401, 403, 429, 503) or r.get("status") is None or challenged))
-                results.append({"path": p, "status": r.get("status"), "baseline": base_status,
-                                "challenged": challenged, "blocked": blocked, "server": r.get("server", "")})
-            site["bot_access"][name] = {"purpose": purpose, "results": results,
-                                        "blocked": any(x["blocked"] for x in results)}
+            base_status = pages.get(p, {}).get("status")
+            txt = r.get("text", "")[:20000].lower()
+            baseline_markers = set(pages.get(p, {}).get("_markers", []))
+            challenged = any(m.lower() in txt and m not in baseline_markers for m in CHALLENGE_MARKERS)
+            blocked = base_status == 200 and (r.get("status") in (401, 403, 429, 503) or r.get("status") is None or challenged)
+            return {"path": p, "status": r.get("status"), "baseline": base_status,
+                    "challenged": challenged, "blocked": blocked, "server": r.get("server", "")}
+
+        # all bot requests at once (limited by the same concurrency as the crawl)
+        probes = await asyncio.gather(*(probe(ua, p) for ua, _ in AI_BOTS.values() for p in sample))
+        site["bot_access"] = {}
+        for i, (name, (ua, purpose)) in enumerate(AI_BOTS.items()):
+            results = probes[i * len(sample):(i + 1) * len(sample)]
+            site["bot_access"][name] = {"purpose": purpose, "results": results, "blocked": any(x["blocked"] for x in results)}
         return {"pages": pages, "site": site}
 
 

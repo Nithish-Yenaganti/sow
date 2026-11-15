@@ -3,7 +3,7 @@ from findable.rules import Finding
 
 
 def F(rule, url="/x"):
-    return Finding(rule, url, rule, "now", "target", "medium", "SEO")
+    return Finding(rule, url, rule, "now", "target", "medium")
 
 
 def test_lifecycle():

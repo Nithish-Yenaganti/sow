@@ -23,11 +23,8 @@ def do_first(items: list[dict], n: int = 3) -> list[dict]:
 
 
 def _plain(r: dict) -> dict:
-    """Plain fields for a stored finding (older stores may not have them)."""
-    if "plain" in r and r.get("plain"):
-        return r
-    return dict(r, **describe(r.get("rule", ""), r.get("url", "site"), r.get("who", "agent"),
-                              r.get("title", ""), r.get("current", "")))
+    """Plain fields for a stored finding (stores from older versions may not have them)."""
+    return r if r.get("plain") else dict(r, **describe(r.get("rule", ""), r.get("url", "site"), r.get("who", "agent")))
 
 
 def is_minor(r: dict) -> bool:
