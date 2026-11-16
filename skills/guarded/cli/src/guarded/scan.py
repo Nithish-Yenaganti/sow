@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from guarded import checks_code, checks_config, deps
+from guarded import checks_code, checks_config, deps, suppress
 from guarded.project import load
 from guarded.rules import RULES, Finding
 
@@ -20,10 +20,11 @@ def scan(root: Path, online: bool = False, fetch=None) -> dict:
         if f.fingerprint not in seen:
             seen.add(f.fingerprint)
             unique.append(f)
+    unique, silenced = suppress.apply(pj, unique)
     online_rules = {"pkg.not_found", "pkg.suspicious", "pkg.vulnerable"}
     scope = {r for r in RULES if online or r not in online_rules}
     return {"findings": unique, "files_scanned": len(pj.files), "packages": pkg_meta, "scope": scope,
-            "stack": _stack(pj)}
+            "stack": _stack(pj), "suppressed": silenced}
 
 
 def _stack(pj) -> list[str]:

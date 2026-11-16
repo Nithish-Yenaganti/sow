@@ -14,6 +14,7 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
+from findable import atomic
 from findable.rules import Finding
 
 ACTIVE = {"new", "open", "regressed"}
@@ -39,9 +40,7 @@ def load(root: Path) -> dict[str, dict]:
 
 
 def save(root: Path, store: dict[str, dict]) -> None:
-    p = store_path(root)
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(json.dumps(store, indent=2, ensure_ascii=False) + "\n")
+    atomic.write_json(store_path(root), store)
 
 
 def _transition(rec: dict, to: str, why: str) -> None:

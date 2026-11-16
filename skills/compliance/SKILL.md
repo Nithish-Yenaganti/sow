@@ -1,6 +1,8 @@
 ---
 name: compliance
 description: Find and fix the legal and compliance gaps in a website or web app (privacy policy, terms, cookie consent, GDPR/CCPA data rights, refunds and subscriptions, AI disclosures, open-source licenses, fonts and images, marketing claims, age limits, security basics) without pretending to be a lawyer. Use when the user asks for a privacy policy, terms of service, cookie banner, GDPR or CCPA check, "is my app legal", license audit, refund policy, AI disclosure, or says "run compliance" / "/compliance". Runs the `compliance` CLI in the project, asks the user about their business, reports in plain language, asks before every change, builds what they agree to as a reviewable diff, and verifies it.
+license: MIT
+compatibility: Needs uv (it fetches Python 3.11+ if missing); works offline.
 ---
 
 # compliance

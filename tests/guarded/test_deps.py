@@ -56,6 +56,31 @@ def test_lock_files_give_exact_versions(make):
     assert ("npm", "mylib") not in v
 
 
+def test_pyproject_read_with_a_real_toml_parser(make):
+    root = make({
+        "pyproject.toml": (
+            "[project]\nname = 'x'\ndependencies = ['fastapi>=0.110', \"httpx==0.28.1\"]  # trailing comment\n"
+            "[project.optional-dependencies]\nai = ['openai']\n"
+            "[dependency-groups]\ndev = ['pytest==8.3.0', {include-group = 'lint'}]\nlint = ['ruff']\n"
+            "[tool.poetry.dependencies]\npython = '^3.11'\nrequests = '2.32.3'\nlocal = {path = '../local'}\n"
+            "[tool.poetry.group.test.dependencies]\nhypothesis = {version = '^6.0'}\n"),
+        # Key order in lock files isn't fixed; the old regex needed `version` right after `name`.
+        "uv.lock": "version = 1\n[[package]]\nsource = { registry = 'https://pypi.org/simple' }\nname = 'fastapi'\n"
+                   "version = '0.115.6'\n",
+    })
+    deps_ = {d.name: d for d in load(root).deps}
+    assert deps_["fastapi"].version == "0.115.6" and not deps_["fastapi"].dev
+    assert deps_["httpx"].version == "0.28.1"
+    assert deps_["openai"].dev and deps_["pytest"].version == "8.3.0" and "ruff" in deps_
+    assert deps_["requests"].version == "2.32.3" and deps_["hypothesis"].version is None
+    assert "python" not in deps_ and "local" not in deps_
+
+
+def test_broken_toml_is_skipped_not_fatal(make):
+    root = make({"pyproject.toml": "[project\ndependencies = [", "uv.lock": "not toml ["})
+    assert load(root).deps == []
+
+
 def test_lookalike_offline():
     assert deps.lookalike("lodahs", "npm") == "lodash"
     assert deps.lookalike("reqeusts", "PyPI") == "requests"

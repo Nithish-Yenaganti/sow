@@ -178,7 +178,7 @@ def check_hidden(pj: Project, out: list[Finding]) -> None:
         m = TAG_CHARS.search(t)
         if m:
             hidden = _decode_tags(m.group(0))
-            out.append(Finding("aitools.hidden_text", posix, f"invisible 'tag' characters that spell out hidden text"
+            out.append(Finding("aitools.hidden_text", posix, "invisible 'tag' characters that spell out hidden text"
                                + (f": \"{hidden[:80]}\"" if hidden else ""), files=[f"{posix}:{line_of(t, m.start())}"],
                                evidence=[hidden[:200]], key="tags"))
             continue

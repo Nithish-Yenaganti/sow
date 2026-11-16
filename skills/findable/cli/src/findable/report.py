@@ -7,6 +7,7 @@ from pathlib import Path
 
 from jinja2 import Environment, PackageLoader, select_autoescape
 
+from findable import atomic
 from findable import __version__
 from findable.plain import CHANGE_LABEL, GROUPS, describe
 
@@ -90,7 +91,4 @@ def html(run: dict, items: list[dict], delta: dict, dismissed: list[dict]) -> st
 
 
 def write_html(root: Path, content: str) -> Path:
-    p = root / ".findable" / "report.html"
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(content, encoding="utf-8")
-    return p
+    return atomic.write_text(root / ".findable" / "report.html", content)

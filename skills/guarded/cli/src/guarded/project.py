@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import re
 import subprocess
+import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -144,10 +145,12 @@ def _read_deps(pj: Project) -> None:
     # Lock files fill in exact versions for Python.
     for f in pj.files:
         if f.name in ("uv.lock", "poetry.lock"):
-            for m in re.finditer(r'\[\[package\]\]\s*\nname\s*=\s*"([^"]+)"\s*\nversion\s*=\s*"([^"]+)"', pj.text(f)):
-                d = seen.get(("PyPI", norm_py(m.group(1))))
-                if d and not d.version:
-                    d.version = m.group(2)
+            for pkg in _toml(pj.text(f)).get("package", []):
+                if not isinstance(pkg, dict) or not isinstance(pkg.get("name"), str):
+                    continue
+                d = seen.get(("PyPI", norm_py(pkg["name"])))
+                if d and not d.version and isinstance(pkg.get("version"), str):
+                    d.version = pkg["version"]
         elif f.name == "Pipfile.lock":
             try:
                 lock = json.loads(pj.text(f))
@@ -195,18 +198,41 @@ def _npm_lock(pj: Project, folder: Path) -> dict:
     return out
 
 
+def _toml(text: str) -> dict:
+    try:
+        return tomllib.loads(text)
+    except tomllib.TOMLDecodeError:
+        return {}
+
+
+_REQ = re.compile(r"^([A-Za-z0-9][A-Za-z0-9._-]*)(\[[^\]]*\])?\s*(==\s*([\w.+-]+))?")
+
+
 def _pyproject(text: str):
-    """[project].dependencies and optional/dev groups, read without a TOML parser (Python 3.10 has none)."""
-    for m in re.finditer(r"^(dependencies|dev|test|docs|[\w-]+)\s*=\s*\[(.*?)\]", text, re.M | re.S):
-        header = ("\n" + text[:m.start()]).rsplit("\n[", 1)[-1].split("]", 1)[0]
-        if not (header in ("project", "project.optional-dependencies", "dependency-groups")
-                or header.startswith("tool.uv")):
-            continue
-        dev = header != "project"
-        for s in re.findall(r"[\"']([^\"']+)[\"']", m.group(2)):
-            mm = re.match(r"^([A-Za-z0-9][A-Za-z0-9._-]*)(\[[^\]]*\])?\s*(==\s*([\w.+-]+))?", s.strip())
-            if mm:
-                yield norm_py(mm.group(1)), mm.group(4), s, dev
+    """Dependencies from [project], [project.optional-dependencies], [dependency-groups] (PEP 735),
+    [tool.uv] dev-dependencies and Poetry's tables. Yields (name, exact version or None, spec, dev)."""
+    doc = _toml(text)
+    project, tool = doc.get("project") or {}, doc.get("tool") or {}
+    lists: list[tuple[list, bool]] = [(project.get("dependencies") or [], False)]
+    lists += [(v, True) for v in (project.get("optional-dependencies") or {}).values()]
+    lists += [(v, True) for v in (doc.get("dependency-groups") or {}).values()]
+    lists.append(((tool.get("uv") or {}).get("dev-dependencies") or [], True))
+    for specs, dev in lists:
+        for s in specs if isinstance(specs, list) else []:
+            if isinstance(s, str) and (m := _REQ.match(s.strip())):     # skip {include-group = ...} tables
+                yield norm_py(m.group(1)), m.group(4), s, dev
+    poetry = tool.get("poetry") or {}
+    tables = [(poetry.get("dependencies") or {}, False), (poetry.get("dev-dependencies") or {}, True)]
+    tables += [((g or {}).get("dependencies") or {}, True) for g in (poetry.get("group") or {}).values()]
+    for table, dev in tables:
+        for name, spec in table.items() if isinstance(table, dict) else []:
+            if name.lower() == "python":
+                continue
+            v = spec if isinstance(spec, str) else (spec or {}).get("version", "") if isinstance(spec, dict) else ""
+            if isinstance(spec, dict) and ("path" in spec or "git" in spec or "url" in spec):
+                continue
+            exact = v.strip().lstrip("=").strip() if re.fullmatch(r"==?\s*[\w.+-]+", v.strip()) or re.fullmatch(r"\d[\w.+-]*", v) else None
+            yield norm_py(name), exact, f"{name} {v}".strip(), dev
 
 
 # --- git -----------------------------------------------------------------------------------------------------------

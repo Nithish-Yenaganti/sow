@@ -1,6 +1,8 @@
 ---
 name: findable
 description: Check and fix whether Google and AI engines (ChatGPT, Perplexity, Claude, Gemini, Bing/Copilot) can find, read and cite this website — technical SEO, AEO and GEO. Use when the user asks to audit or improve SEO, search visibility, indexing, sitemap/robots, structured data, AI crawler access, LLM/AI citations, "why don't I show up in ChatGPT", or says "run findable" / "/findable". Runs the `findable` CLI in the project, explains results in plain language, and fixes only what the user approves, then verifies it.
+license: MIT
+compatibility: Needs uv (it fetches Python 3.11+ if missing); live-site checks fetch the URL you choose.
 ---
 
 # findable

@@ -12,6 +12,8 @@ import json
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from compliance import atomic
+
 STATE_DIR = ".compliance"
 
 
@@ -27,8 +29,7 @@ def _load(p: Path) -> dict:
 
 
 def _save(p: Path, data: dict) -> None:
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
+    atomic.write_json(p, data)
 
 
 def load_profile(root: Path) -> dict:

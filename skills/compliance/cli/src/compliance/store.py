@@ -6,6 +6,7 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
+from compliance import atomic
 from compliance.profile import state_dir
 from compliance.rules import GROUPS, SEVERITY_RANK
 
@@ -25,8 +26,7 @@ def _load(p: Path, default):
 
 
 def _save(p: Path, data) -> None:
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n")
+    atomic.write_json(p, data)
 
 
 def load_findings(root: Path) -> dict:
@@ -120,7 +120,4 @@ def report_md(run: dict, items: list[dict], data_map: list[dict]) -> str:
 
 
 def write_report(root: Path, text: str) -> Path:
-    p = state_dir(root) / "report.md"
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(text)
-    return p
+    return atomic.write_text(state_dir(root) / "report.md", text)

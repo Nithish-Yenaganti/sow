@@ -5,7 +5,6 @@ from __future__ import annotations
 import base64
 import json
 import re
-from collections import defaultdict
 from pathlib import Path
 
 from guarded.project import (JS_EXT, UI_EXT, Project, call_args, in_pattern, interpolates, is_comment, is_static, line_of,
