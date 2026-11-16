@@ -16,6 +16,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 from pathlib import Path
 
+from guarded import atomic
 from guarded import __version__
 from guarded.project import Dep, Project
 from guarded.rules import Finding
@@ -27,6 +28,7 @@ NEW_DAYS = 30
 RARE_WEEKLY = 200
 MAX_LOOKUPS = 400
 MAX_VULN_DETAILS = 80
+OSV_BATCH = 1000          # api.osv.dev/v1/querybatch accepts at most 1,000 queries per request
 
 # Popular names that fakes imitate. A dependency one edit away from one of these (and not itself in the list) is flagged.
 POPULAR_NPM = """react react-dom next vue nuxt svelte angular express fastify koa hono axios lodash underscore moment dayjs
@@ -118,11 +120,10 @@ class Net:
         return status, data
 
     def save(self) -> None:
-        self.path.parent.mkdir(parents=True, exist_ok=True)
         # Keep the cache small: drop old entries and big registry documents.
         now = time.time()
         keep = {k: v for k, v in self.cache.items() if now - v["t"] < CACHE_TTL}
-        self.path.write_text(json.dumps(keep))
+        atomic.write_text(self.path, json.dumps(keep))
 
 
 def _npm_info(net: Net, name: str) -> dict:
@@ -230,8 +231,8 @@ def check(pj: Project, online: bool, fetch=None) -> tuple[list[Finding], dict]:
     # Known vulnerabilities (OSV). Only exact versions can be checked.
     versioned = [d for d in deps if d.version]
     vulns: dict[str, list[str]] = {}
-    for i in range(0, len(versioned), 500):
-        chunk = versioned[i: i + 500]
+    for i in range(0, len(versioned), OSV_BATCH):
+        chunk = versioned[i: i + OSV_BATCH]
         q = {"queries": [{"package": {"name": d.name, "ecosystem": d.ecosystem}, "version": d.version} for d in chunk]}
         status, res = net.get("https://api.osv.dev/v1/querybatch", q)
         if status != 200 or not res:

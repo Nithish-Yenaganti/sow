@@ -10,7 +10,6 @@ from __future__ import annotations
 import re
 from collections import defaultdict
 from dataclasses import asdict, dataclass, field
-from urllib.parse import urlparse
 
 from findable.plain import CATALOG, UNKNOWN, describe
 

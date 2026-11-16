@@ -1,6 +1,6 @@
 # guarded accuracy eval
 
-guarded 0.1.0 · run 2026-11-15 · 14 open-source projects at pinned commits · scanned offline · 95 hand-verified checks · **14/14 projects pass**
+guarded 0.2.0 · run 2026-11-15 · 14 open-source projects at pinned commits · scanned offline · 95 hand-verified checks · **14/14 projects pass**
 
 A project passes when the scan reports every real problem verified by reading the code (`must`) and none of the false alarms checked the same way (`must_not`). Three MCP servers are scanned at the commit just before their CVE fix; two of them are also scanned at the fix commit, where the shell-injection finding has to be gone.
 

@@ -14,6 +14,7 @@ from pathlib import Path
 import httpx
 from urllib.parse import urlparse
 
+from findable import atomic
 from findable.detect import App, app_at
 
 CONFIG_DIR = ".findable"
@@ -32,9 +33,7 @@ def load_config(root: Path) -> dict:
 
 
 def save_config(root: Path, cfg: dict) -> None:
-    p = config_path(root)
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(json.dumps(cfg, indent=2) + "\n")
+    atomic.write_json(config_path(root), cfg)
 
 
 @dataclass

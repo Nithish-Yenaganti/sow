@@ -6,6 +6,7 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
+from guarded import atomic
 from guarded.rules import GROUPS, SEVERITY_RANK
 
 ACTIVE = {"new", "open"}
@@ -33,12 +34,14 @@ def save_findings(root: Path, store: dict) -> None:
     ignore = p.parent / ".gitignore"
     if not ignore.exists():
         ignore.write_text("# guarded scan output; keep it out of git\n*\n")
-    p.write_text(json.dumps(store, indent=2, ensure_ascii=False) + "\n")
+    atomic.write_json(p, store)
 
 
-def apply_run(store: dict, current: list[dict], only: set[str] | None = None, scope: set[str] | None = None) -> dict:
-    """scope: rule groups this run checked. Findings from groups it skipped (packages, when offline) stay as they were."""
-    seen, delta = set(), {"new": [], "fixed": [], "open": []}
+def apply_run(store: dict, current: list[dict], only: set[str] | None = None, scope: set[str] | None = None,
+              suppressed: set[str] = frozenset()) -> dict:
+    """scope: rules this run checked. Findings from rules it skipped (packages, when offline) stay as they were.
+    suppressed: fingerprints a guarded-ignore comment silenced. They leave the active list but are not "fixed"."""
+    seen, delta = set(), {"new": [], "fixed": [], "open": [], "suppressed": []}
     for f in current:
         fp = f["fingerprint"]
         seen.add(fp)
@@ -58,6 +61,10 @@ def apply_run(store: dict, current: list[dict], only: set[str] | None = None, sc
         if fp in seen or rec["status"] not in ACTIVE or (only is not None and fp not in only):
             continue
         if scope is not None and rec.get("rule") not in scope:
+            continue
+        if fp in suppressed:
+            rec["status"] = "suppressed"
+            delta["suppressed"].append(fp)
             continue
         rec["status"] = "fixed"
         rec["fixed_at"] = _now()
@@ -95,7 +102,4 @@ def report_md(run: dict, items: list[dict]) -> str:
 
 
 def write_report(root: Path, text: str) -> Path:
-    p = state_dir(root) / "report.md"
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(text)
-    return p
+    return atomic.write_text(state_dir(root) / "report.md", text)

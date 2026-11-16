@@ -1,6 +1,6 @@
 # compliance accuracy eval
 
-compliance 0.1.0 · run 2026-11-13 · 8 open-source projects at pinned commits · 57 hand-verified checks · **8/8 projects pass**
+compliance 0.1.1 · run 2026-11-15 · 8 open-source projects at pinned commits · 57 hand-verified checks · **8/8 projects pass**
 
 Each project is scanned with a fixed intake profile. A project passes when the scan reports every real gap verified by reading the code (`must`) and none of the false alarms checked the same way (`must_not`).
 

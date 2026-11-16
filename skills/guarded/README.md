@@ -82,7 +82,7 @@ In your project, in `.guarded/` (git-ignored automatically):
 | File | What's in it |
 |---|---|
 | `report.md` | The full report, with the file, line and source behind each finding |
-| `findings.json` | Findings across runs (new, open, fixed, dismissed) |
+| `findings.json` | Findings across runs (new, open, fixed, dismissed, suppressed) |
 | `cache.json` | Package lookups from the last day (online mode only) |
 
 <details>
@@ -92,13 +92,27 @@ Your assistant runs these for you. To run them yourself, from your project folde
 
 | Command | What it does |
 |---|---|
-| `guarded scan [--online]` | Reads the project and writes the report |
-| `guarded report` | Shows the latest results |
-| `guarded verify --ids …` | Re-checks specific fixes (exit 2 if any still fail) |
+| `guarded scan [--online] [--sarif FILE]` | Reads the project and writes the report (and SARIF, if asked) |
+| `guarded report [--sarif FILE]` | Shows the latest results |
+| `guarded verify --ids …` | Re-checks specific fixes (exit 2 if any still fail or were only silenced) |
 | `guarded dismiss <id> --reason …` | Marks a finding as intentional or a false alarm |
 | `guarded rules` | Lists every check |
 
 Add `--json` for machine-readable output.
+
+**Silence a false alarm for the whole team.** `dismiss` is stored in `.guarded/`, which is git-ignored, so it stays on
+your machine. To record the decision in the code, where reviewers and CI see it, add a comment on the line, or the line
+above, naming the rule (like `# nosemgrep` or `# nosec`):
+
+```js
+db.query(sql) // guarded-ignore[inject.sql] built from constants only
+```
+
+A rule id is required, and the comment is ignored for the `aitools.*` checks, because whoever plants instructions
+for AI tools in a file could plant the comment too. Silenced places are still listed in the scan output.
+
+**GitHub code scanning.** `guarded scan --sarif guarded.sarif` writes SARIF 2.1.0, ready for
+`github/codeql-action/upload-sarif`, so findings show up as alerts on pull requests.
 
 **Develop:**
 

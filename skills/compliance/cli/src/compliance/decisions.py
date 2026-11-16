@@ -10,6 +10,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from compliance import atomic
 from compliance.profile import Option, Question, state_dir
 
 DOC_FOR_RULE = {
@@ -33,9 +34,7 @@ def load(root: Path) -> dict:
 
 
 def save(root: Path, d: dict) -> None:
-    p = state_dir(root) / "decisions.json"
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(json.dumps(d, indent=2, ensure_ascii=False) + "\n")
+    atomic.write_json(state_dir(root) / "decisions.json", d)
 
 
 def _yes(fid, q, rec_label, alt_value, alt_label, alt_desc="", why=""):

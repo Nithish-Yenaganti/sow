@@ -12,7 +12,7 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List, Optional
+from typing import Annotated, List
 
 import typer
 
@@ -59,9 +59,9 @@ def version() -> None:
 
 @app.command()
 def plan(
-    answer: Optional[List[str]] = typer.Option(None, "--answer", help="id=value (repeatable; comma-separate multi-select)"),
-    as_json: bool = typer.Option(False, "--json"),
-    path: str = typer.Option(".", help="Project root"),
+    answer: Annotated[List[str] | None, typer.Option("--answer", help="id=value (repeatable; comma-separate multi-select)")] = None,
+    as_json: Annotated[bool, typer.Option("--json")] = False,
+    path: Annotated[str, typer.Option(help="Project root")] = ".",
 ) -> None:
     """Intake questions, then say what `scan` will check (reads only)."""
     root = _root(path)
@@ -87,8 +87,8 @@ def _run_scan(root: Path, p: dict) -> dict:
 
 @app.command()
 def scan(
-    as_json: bool = typer.Option(False, "--json"),
-    path: str = typer.Option(".", help="Project root"),
+    as_json: Annotated[bool, typer.Option("--json")] = False,
+    path: Annotated[str, typer.Option(help="Project root")] = ".",
 ) -> None:
     """Scan the project (reads only), save findings and the data map, write .compliance/report.md."""
     root = _root(path)
@@ -119,9 +119,9 @@ def scan(
 
 @app.command()
 def decide(
-    set_: Optional[List[str]] = typer.Option(None, "--set", help="id=value (repeatable; comma-separate multi-select)"),
-    as_json: bool = typer.Option(True, "--json/--text"),
-    path: str = typer.Option(".", help="Project root"),
+    set_: Annotated[List[str] | None, typer.Option("--set", help="id=value (repeatable; comma-separate multi-select)")] = None,
+    as_json: Annotated[bool, typer.Option("--json/--text")] = True,
+    path: Annotated[str, typer.Option(help="Project root")] = ".",
 ) -> None:
     """Questions raised by the scan. Exit 3 while some are unanswered."""
     root = _root(path)
@@ -143,8 +143,8 @@ def decide(
 
 @app.command()
 def changes(
-    as_json: bool = typer.Option(True, "--json/--text"),
-    path: str = typer.Option(".", help="Project root"),
+    as_json: Annotated[bool, typer.Option("--json/--text")] = True,
+    path: Annotated[str, typer.Option(help="Project root")] = ".",
 ) -> None:
     """The agreed change list for the user's one approval, plus their own and the lawyer's to-dos."""
     root = _root(path)
@@ -158,9 +158,9 @@ def changes(
 
 @app.command(name="draft")
 def draft_cmd(
-    doc: str = typer.Argument(..., help=f"One of: {', '.join(draft.DOCS)}"),
-    as_json: bool = typer.Option(True, "--json/--text"),
-    path: str = typer.Option(".", help="Project root"),
+    doc: Annotated[str, typer.Argument(help=f"One of: {', '.join(draft.DOCS)}")],
+    as_json: Annotated[bool, typer.Option("--json/--text")] = True,
+    path: Annotated[str, typer.Option(help="Project root")] = ".",
 ) -> None:
     """Render a document draft into .compliance/drafts/ (the agent then adds it to the site)."""
     root = _root(path)
@@ -179,8 +179,8 @@ def draft_cmd(
 
 @app.command()
 def notices(
-    as_json: bool = typer.Option(True, "--json/--text"),
-    path: str = typer.Option(".", help="Project root"),
+    as_json: Annotated[bool, typer.Option("--json/--text")] = True,
+    path: Annotated[str, typer.Option(help="Project root")] = ".",
 ) -> None:
     """Write a third-party notices list (production dependencies and licenses) into .compliance/drafts/."""
     root = _root(path)
@@ -193,9 +193,9 @@ def notices(
 
 @app.command()
 def verify(
-    ids: str = typer.Option(..., "--ids", help="Comma-separated fingerprints the agent fixed"),
-    as_json: bool = typer.Option(True, "--json/--text"),
-    path: str = typer.Option(".", help="Project root"),
+    ids: Annotated[str, typer.Option("--ids", help="Comma-separated fingerprints the agent fixed")],
+    as_json: Annotated[bool, typer.Option("--json/--text")] = True,
+    path: Annotated[str, typer.Option(help="Project root")] = ".",
 ) -> None:
     """Re-scan and check the given findings. Exit 2 if any are still failing."""
     root = _root(path)
@@ -214,9 +214,9 @@ def verify(
 
 @app.command()
 def dismiss(
-    fingerprint: str = typer.Argument(...),
-    reason: str = typer.Option(..., "--reason", help="The user's reason"),
-    path: str = typer.Option(".", help="Project root"),
+    fingerprint: Annotated[str, typer.Argument()],
+    reason: Annotated[str, typer.Option("--reason", help="The user's reason")],
+    path: Annotated[str, typer.Option(help="Project root")] = ".",
 ) -> None:
     """Mark a finding as intentional (the user's reason is required)."""
     root = _root(path)
@@ -231,8 +231,8 @@ def dismiss(
 
 @app.command()
 def report(
-    as_json: bool = typer.Option(True, "--json/--text"),
-    path: str = typer.Option(".", help="Project root"),
+    as_json: Annotated[bool, typer.Option("--json/--text")] = True,
+    path: Annotated[str, typer.Option(help="Project root")] = ".",
 ) -> None:
     """Latest findings without re-scanning."""
     root = _root(path)

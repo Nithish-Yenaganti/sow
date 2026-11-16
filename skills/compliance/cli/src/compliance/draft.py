@@ -11,6 +11,7 @@ from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined
 
+from compliance import atomic
 from compliance.profile import state_dir
 
 TEMPLATES = Path(__file__).parent / "templates"
@@ -68,7 +69,4 @@ def render(doc: str, ctx: dict) -> tuple[str, list[str]]:
 
 
 def write(root: Path, doc: str, text: str) -> Path:
-    p = state_dir(root) / "drafts" / f"{doc}.md"
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(text)
-    return p
+    return atomic.write_text(state_dir(root) / "drafts" / f"{doc}.md", text)

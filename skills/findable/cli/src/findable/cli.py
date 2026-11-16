@@ -8,11 +8,11 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Optional
+from typing import Annotated
 
 import typer
 
-from findable import __version__, ask, findings, report
+from findable import __version__, ask, atomic, findings, report
 from findable.detect import app_at, detect
 from findable.verify import collect, fixable_scope, not_checked_reason, verify_targets
 
@@ -45,10 +45,10 @@ FRAMEWORK_NAMES = {"nextjs-app": "Next.js", "nextjs-pages": "Next.js", "nextjs":
 
 @app.command()
 def plan(
-    app_: Optional[str] = typer.Option(None, "--app", help="App folder to scan (monorepos)"),
-    url: Optional[str] = typer.Option(None, "--url", help="URL to scan live, or 'none' for code only"),
-    as_json: bool = typer.Option(False, "--json"),
-    path: str = typer.Option(".", help="Project root"),
+    app_: Annotated[str | None, typer.Option("--app", help="App folder to scan (monorepos)")] = None,
+    url: Annotated[str | None, typer.Option("--url", help="URL to scan live, or 'none' for code only")] = None,
+    as_json: Annotated[bool, typer.Option("--json")] = False,
+    path: Annotated[str, typer.Option(help="Project root")] = ".",
 ) -> None:
     """Say what `scan` would check, without scanning or saving anything (for the user's OK)."""
     root = _root(path)
@@ -89,11 +89,11 @@ def plan(
 
 @app.command()
 def scan(
-    app_: Optional[str] = typer.Option(None, "--app", help="App folder to scan (monorepos)"),
-    url: Optional[str] = typer.Option(None, "--url", help="URL to scan live, or 'none' for code only"),
-    max_pages: int = typer.Option(50, help="Live page budget"),
-    as_json: bool = typer.Option(False, "--json", help="Machine-readable output for the agent"),
-    path: str = typer.Option(".", help="Project root"),
+    app_: Annotated[str | None, typer.Option("--app", help="App folder to scan (monorepos)")] = None,
+    url: Annotated[str | None, typer.Option("--url", help="URL to scan live, or 'none' for code only")] = None,
+    max_pages: Annotated[int, typer.Option(help="Live page budget")] = 50,
+    as_json: Annotated[bool, typer.Option("--json", help="Machine-readable output for the agent")] = False,
+    path: Annotated[str, typer.Option(help="Project root")] = ".",
 ) -> None:
     """Detect → (ask) → scan code + live site → findings → report."""
     root = _root(path)
@@ -120,9 +120,8 @@ def scan(
     run = {"at": datetime.now(timezone.utc).isoformat(timespec="seconds"), "app": res.app.root, "name": name,
            "framework": res.app.framework, "url": res.url, "live_ok": data["live_ok"], "gsc": bool(data["gsc"]),
            "pages": data["pages"], "previous_run": previous, "notes": res.notes, "version": __version__}
-    (root / ".findable" / "last-run.json").write_text(json.dumps(
-        run | {"live_site": (data["live"] or {}).get("site"), "code_site": data["code"]["site"]},
-        indent=2, default=str) + "\n")
+    atomic.write_json(root / ".findable" / "last-run.json",
+                      run | {"live_site": (data["live"] or {}).get("site"), "code_site": data["code"]["site"]}, default=str)
 
     items = [r for r in findings.active(store) if r.get("app", res.app.root) == res.app.root]
     dismissed = [dict(r, fingerprint=fp) for fp, r in store.items() if r["status"] == "dismissed"]
@@ -136,7 +135,7 @@ def scan(
         typer.echo(report.terminal(run, items, delta, str(rp.relative_to(root))))
 
 
-def _search_check(module, label: str, text, action: str, file: Optional[str], site: Optional[str],
+def _search_check(module, label: str, text, action: str, file: str | None, site: str | None,
                   as_json: bool, path: str) -> None:
     """record | show for a web-search check (AI visibility, keyword research)."""
     root = _root(path)
@@ -163,22 +162,22 @@ def _search_check(module, label: str, text, action: str, file: Optional[str], si
     _print_json({"status": "ok", module.NAME: latest, "next": nxt}) if as_json else typer.echo(f"{text(latest)}\nNext: {nxt}.")
 
 
-_ACTION = typer.Argument(..., help="record: store the agent's web-search results · show: print the latest")
-_FILE = typer.Option(None, "--file", help="Results JSON written by the agent (for record)")
-_SITE = typer.Option(None, "--site", help="Your production domain (default: found in code or the scanned URL)")
+Action = Annotated[str, typer.Argument(help="record: store the agent's web-search results · show: print the latest")]
+File = Annotated[str | None, typer.Option("--file", help="Results JSON written by the agent (for record)")]
+Site = Annotated[str | None, typer.Option("--site", help="Your production domain (default: found in code or the scanned URL)")]
 
 
 @app.command(name="visibility")
-def visibility_cmd(action: str = _ACTION, file: Optional[str] = _FILE, site: Optional[str] = _SITE,
-                   as_json: bool = typer.Option(False, "--json"), path: str = typer.Option(".")) -> None:
+def visibility_cmd(action: Action, file: File = None, site: Site = None,
+                   as_json: Annotated[bool, typer.Option("--json")] = False, path: Annotated[str, typer.Option()] = ".") -> None:
     """AI visibility: do search results for your questions include your site?"""
     from findable import visibility
     _search_check(visibility, "AI visibility check", _vis_text, action, file, site, as_json, path)
 
 
 @app.command(name="keywords")
-def keywords_cmd(action: str = _ACTION, file: Optional[str] = _FILE, site: Optional[str] = _SITE,
-                 as_json: bool = typer.Option(False, "--json"), path: str = typer.Option(".")) -> None:
+def keywords_cmd(action: Action, file: File = None, site: Site = None,
+                 as_json: Annotated[bool, typer.Option("--json")] = False, path: Annotated[str, typer.Option()] = ".") -> None:
     """Keyword research: for each search, do you show up, and who does instead?"""
     from findable import keywords
     _search_check(keywords, "keyword research", _kw_text, action, file, site, as_json, path)
@@ -219,8 +218,8 @@ def _vis_text(v: dict) -> str:
 
 @app.command(name="report")
 def report_cmd(
-    as_json: bool = typer.Option(False, "--json"),
-    path: str = typer.Option("."),
+    as_json: Annotated[bool, typer.Option("--json")] = False,
+    path: Annotated[str, typer.Option()] = ".",
 ) -> None:
     """Show the latest results without re-scanning."""
     root = _root(path)
@@ -241,10 +240,10 @@ def report_cmd(
 
 @app.command()
 def verify(
-    ids: Optional[str] = typer.Option(None, help="Comma-separated fingerprints (default: all open agent-fixable)"),
-    url: Optional[str] = typer.Option(None, "--url", help="Override URL (e.g. local dev server)"),
-    as_json: bool = typer.Option(False, "--json"),
-    path: str = typer.Option("."),
+    ids: Annotated[str | None, typer.Option(help="Comma-separated fingerprints (default: all open agent-fixable)")] = None,
+    url: Annotated[str | None, typer.Option("--url", help="Override URL (e.g. local dev server)")] = None,
+    as_json: Annotated[bool, typer.Option("--json")] = False,
+    path: Annotated[str, typer.Option()] = ".",
 ) -> None:
     """Re-check only what the selected findings touch; mark fixed ones."""
     root = _root(path)
@@ -295,9 +294,9 @@ def verify(
 
 @app.command()
 def dismiss(
-    fingerprint: str = typer.Argument(..., help="e.g. seo.canonical|/pricing"),
-    reason: str = typer.Option(..., "--reason", help="Why (kept in history)"),
-    path: str = typer.Option("."),
+    fingerprint: Annotated[str, typer.Argument(help="e.g. seo.canonical|/pricing")],
+    reason: Annotated[str, typer.Option("--reason", help="Why (kept in history)")],
+    path: Annotated[str, typer.Option()] = ".",
 ) -> None:
     """Dismiss a finding so it isn't raised again."""
     root = _root(path)

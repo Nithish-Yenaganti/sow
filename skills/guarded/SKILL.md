@@ -1,6 +1,8 @@
 ---
 name: guarded
 description: Find and fix the security holes that AI-built web apps tend to ship (SQL injection, XSS, shell command injection, leaked API keys, Supabase tables without row level security, open Firebase rules, prompt-injection risks, AI replies that can leak data, poisoned AI coding tool configs like .cursor/mcp.json or auto-approve settings, hidden instructions in README or AGENTS.md, made-up or malicious packages, and packages with known CVEs). Use when the user asks for a security check or audit, "is my app secure", "check for vulnerabilities", SQL injection, XSS, prompt injection, slopsquatting, leaked keys, Supabase RLS, MCP server safety, or says "run guarded" / "/guarded". Runs the `guarded` CLI in the project (reads only), explains findings in plain language, fixes only what the user approves, and verifies the fixes. It is a code check, not a penetration test.
+license: MIT
+compatibility: Needs uv (it fetches Python 3.11+ if missing); package lookups (npm, PyPI, OSV) only with --online.
 ---
 
 # guarded
@@ -76,7 +78,10 @@ End with: "Run `/guarded` again after adding AI features, packages, API routes o
 
 ## Other commands
 - `guarded report --json`: latest findings without re-scanning
-- `guarded dismiss "<fingerprint>" --reason "<the user's reason>"`: when the user says a finding is intentional or a false alarm. Always ask for the reason.
+- `guarded dismiss "<fingerprint>" --reason "<the user's reason>"`: when the user says a finding is intentional or a false alarm. Always ask for the reason. It stays on this machine; if they want the decision shared with their team, offer to add a `guarded-ignore[<rule>] <reason>` comment on that line instead (never for `aitools.*` rules, which ignore it).
+- `guarded scan --sarif <file>`: SARIF for GitHub code scanning, when the user asks for CI or code-scanning output.
+
+The scan output lists `suppressed`: places a `guarded-ignore` comment already silences. Mention them in the report; a comment records a decision, it doesn't prove the code is safe. Never add one to make `verify` pass: verify reports silenced findings as not fixed.
 - `guarded rules --json`: every check
 
 ## Files

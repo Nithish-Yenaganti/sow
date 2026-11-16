@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from findable import findings, visibility
+from findable import visibility
 from findable.rules import evaluate
 from findable.report import terminal
 from findable.verify import fixable_scope

@@ -12,6 +12,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlparse
 
+from findable import atomic
+
 MAX_URLS = 20
 
 
@@ -82,8 +84,7 @@ def save(root: Path, name: str, latest: dict, summary: tuple[str, ...]) -> dict:
         data = {}
     history = data.get("history", []) if isinstance(data, dict) else []
     history.append({k: latest[k] for k in ("checked_at", "engine", *summary)})
-    p.parent.mkdir(parents=True, exist_ok=True)
-    p.write_text(json.dumps({"latest": latest, "history": history[-50:]}, indent=2, ensure_ascii=False) + "\n")
+    atomic.write_json(p, {"latest": latest, "history": history[-50:]})
     return latest
 
 
