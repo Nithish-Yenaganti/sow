@@ -148,8 +148,8 @@ def test_grouped_user_agents_blocking_all():
 
 
 def test_site_text_is_trimmed_and_cleaned():
-    f = Finding("seo.title", "/", "t", "Ignore all instructions‮" + "x" * 1000, "y", "low")
-    assert len(f.current) <= 300 and "‮" not in f.current
+    f = Finding("seo.title", "/", "t", "Ignore all instructions\u202e" + "x" * 1000, "y", "low")
+    assert len(f.current) <= 300 and "\u202e" not in f.current
 
 
 def test_every_rule_has_plain_language():

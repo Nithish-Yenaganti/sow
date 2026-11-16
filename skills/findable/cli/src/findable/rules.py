@@ -16,7 +16,7 @@ from findable.plain import CATALOG, UNKNOWN, describe
 
 SEVERITY_RANK = {"critical": 0, "high": 1, "medium": 2, "low": 3}
 MAX_TEXT = 300      # site-derived text (titles, descriptions, headings) is untrusted: keep it short
-_CTRL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f​-‏‪-‮⁦-⁩]")
+_CTRL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f\u200b-\u200f\u202a-\u202e\u2066-\u2069]")
 
 
 def _clean(s) -> str:
