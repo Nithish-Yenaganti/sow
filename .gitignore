@@ -20,6 +20,7 @@ node_modules/
 # Scan output when running a skill on this repo or its fixtures
 .findable/
 .compliance/
+.guarded/
 
 # Local secrets and per-user agent settings
 .env
@@ -37,3 +38,4 @@ Thumbs.db
 
 # Eval checkouts
 evals/compliance/.cache/
+evals/guarded/.cache/

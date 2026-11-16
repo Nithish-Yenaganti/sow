@@ -11,18 +11,19 @@
 
 # SOW — Stay On Web
 
-**Helpers for your AI coding assistant that make sure your website can be found, and is set up the right way.**
+**Helpers for your AI coding assistant that make sure your website can be found, is set up the right way, and doesn't ship the security holes AI-written code tends to have.**
 
 ## Why we made this
 
-Today anyone can build a website in an afternoon with an AI coding assistant. But two things often go wrong after that:
+Today anyone can build a website in an afternoon with an AI coding assistant. But three things often go wrong after that:
 
 1. **Nobody can find it.** Google doesn't show it, and ChatGPT never mentions it.
 2. **It's missing the rules.** No privacy policy, no cookie notice, no refund policy, or code you aren't allowed to use.
+3. **It has security holes.** SQL injection, leaked API keys, a database anyone can read, an AI feature that can be tricked, or a package the AI made up.
 
-Most people only find out much later. SOW gives your coding assistant two skills that check for these problems, explain them in simple words, and fix them, but only when you say yes.
+Most people only find out much later. SOW gives your coding assistant three skills that check for these problems, explain them in simple words, and fix them, but only when you say yes.
 
-## The two skills
+## The three skills
 
 ### findable: "Can people find my website?"
 
@@ -58,6 +59,23 @@ Tested on 8 open-source projects. [Read more about compliance →](skills/compli
 
 > compliance is not a lawyer. Every policy it writes is a draft for a lawyer to check.
 
+### guarded: "Is my app safe from the usual attacks?"
+
+| Topic | What it checks |
+|---|---|
+| **AI tools** | Can a file in your repo make Cursor, Copilot or Claude Code run commands? (auto-approve, risky MCP servers, hidden instructions) |
+| **Keys** | Are secret keys in your code, in git, or sent to the browser? |
+| **Data** | Can anyone read or change your Supabase or Firebase data? |
+| **Injection** | Are database queries or shell commands built from what users type? |
+| **AI features** | Can hidden instructions trick your AI into misusing its tools or leaking data? |
+| **Browser** | Can someone run their own script on your pages (XSS)? |
+| **Server** | Can callers make your server fetch any URL or read any file? |
+| **Packages** | Did the AI add a package that doesn't exist, is malware, or has a known CVE? *(optional, online)* |
+
+Tested on 14 open-source projects, including MCP servers with published CVEs. [Read more about guarded →](skills/guarded)
+
+> guarded is a code check, not a penetration test. It never attacks anything, and never calls your app "secure".
+
 ## How it works
 
 1. You ask your coding assistant, like: "Why doesn't my site show up in Google?"
@@ -91,6 +109,7 @@ Open your website's project and ask:
 
 - "Check if my site can be found" (findable)
 - "Check if my site is set up right" (compliance)
+- "Check my app for security holes" (guarded)
 
 ## License
 

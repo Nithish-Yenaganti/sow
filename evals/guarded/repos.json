@@ -1,0 +1,371 @@
+{
+  "_about": "Real open-source projects at pinned commits. must = fnmatch patterns over finding fingerprints the scan has to report (a real problem in that code); must_not = patterns it must never report (a false alarm, or a CVE the commit fixed); online_must = checked only with --online. Every expectation was checked by reading the code at the pinned commit; the reason is in 'why'. known_gaps = real problems the scan misses (or flags but shouldn't be counted): listed in RESULTS.md, not counted as failures.",
+  "repos": [
+    {
+      "name": "git-mcp-server",
+      "url": "https://github.com/cyanheads/git-mcp-server.git",
+      "sha": "f30169ec3a2520990e5467c19ef42ea7d6d9270e",
+      "kind": "MCP server, commit before the CVE-2025-53107 fix",
+      "must": [
+        "inject.shell|src/mcp-server/tools/gitShow/logic.ts",
+        "inject.shell|src/mcp-server/tools/gitDiff/logic.ts",
+        "inject.shell|src/mcp-server/tools/gitCommit/logic.ts",
+        "inject.shell|src/mcp-server/tools/gitClone/logic.ts",
+        "ai.injection_risk"
+      ],
+      "must_not": [
+        "secrets.*",
+        "inject.sql*",
+        "xss.*",
+        "data.*"
+      ],
+      "why": {
+        "inject.shell|src/mcp-server/tools/gitShow/logic.ts": "Builds `git -C \"${targetPath}\" show ${refSpec}` from tool input and runs it with promisify(exec). This is CVE-2025-53107.",
+        "inject.shell|src/mcp-server/tools/gitDiff/logic.ts": "Same pattern for git diff (CVE-2025-53107).",
+        "inject.shell|src/mcp-server/tools/gitCommit/logic.ts": "Commit message and file paths pasted into a shell command (CVE-2025-53107).",
+        "inject.shell|src/mcp-server/tools/gitClone/logic.ts": "Clone URL from tool input in a shell string (CVE-2025-53107).",
+        "ai.injection_risk": "An MCP server: every tool argument is chosen by the model, so a prompt injection (the advisory's git-log example) reaches these commands.",
+        "secrets.*": "No keys in the repo.",
+        "inject.sql*": "No database.",
+        "xss.*": "No web UI.",
+        "data.*": "No database."
+      }
+    },
+    {
+      "name": "git-mcp-server-fixed",
+      "url": "https://github.com/cyanheads/git-mcp-server.git",
+      "sha": "0dbd6995ccdf76ab770b58013034365b2d06c4d9",
+      "kind": "Same MCP server at the CVE-2025-53107 fix commit",
+      "must": [
+        "ai.injection_risk"
+      ],
+      "must_not": [
+        "inject.shell*",
+        "secrets.*",
+        "xss.*"
+      ],
+      "why": {
+        "inject.shell*": "The fix replaced exec with execFile and argument arrays in every tool.",
+        "ai.injection_risk": "Still an MCP server: tool input is model-chosen. This finding is about design, not the fixed bug.",
+        "secrets.*": "No keys.",
+        "xss.*": "No web UI."
+      }
+    },
+    {
+      "name": "figma-context-mcp",
+      "url": "https://github.com/GLips/Figma-Context-MCP.git",
+      "sha": "5b0d10e76eafafe972dddc40bfb601b50d5953f0",
+      "kind": "MCP server, commit before the CVE-2025-53967 fix",
+      "must": [
+        "inject.shell|src/utils/fetch-with-retry.ts",
+        "ai.injection_risk"
+      ],
+      "online_must": [
+        "pkg.vulnerable|@modelcontextprotocol/sdk *"
+      ],
+      "must_not": [
+        "secrets.*",
+        "xss.*",
+        "inject.sql*"
+      ],
+      "why": {
+        "inject.shell|src/utils/fetch-with-retry.ts": "Falls back to `curl ... \"${url}\"` run through promisify(exec). This is CVE-2025-53967.",
+        "ai.injection_risk": "MCP server; the Figma URL and ids come from the model.",
+        "pkg.vulnerable|@modelcontextprotocol/sdk *": "pnpm-lock pins @modelcontextprotocol/sdk 1.10.2, which has published GHSA advisories.",
+        "secrets.*": "No keys.",
+        "xss.*": "No web UI.",
+        "inject.sql*": "No database."
+      }
+    },
+    {
+      "name": "figma-context-mcp-fixed",
+      "url": "https://github.com/GLips/Figma-Context-MCP.git",
+      "sha": "7f4b5859454b0567c2121ff22c69a0344680b124",
+      "kind": "Same MCP server at the CVE-2025-53967 fix commit",
+      "must": [
+        "ai.injection_risk"
+      ],
+      "must_not": [
+        "inject.shell*"
+      ],
+      "why": {
+        "inject.shell*": "The fix calls curl with execFile and an argument array.",
+        "ai.injection_risk": "Still an MCP server."
+      }
+    },
+    {
+      "name": "github-kanban-mcp",
+      "url": "https://github.com/Sunwood-ai-labs/github-kanban-mcp-server.git",
+      "sha": "5c12cb403675cf455395998293f6f098269616ae",
+      "kind": "MCP server named in CVE-2025-53818 (v0.4.0)",
+      "must": [
+        "inject.shell|src/handlers/comment-handlers.ts",
+        "inject.shell|src/handlers/issue-handlers.ts",
+        "inject.shell|src/handlers/label-handlers.ts",
+        "ai.injection_risk"
+      ],
+      "must_not": [
+        "inject.shell|src/utils/exec.ts",
+        "secrets.*"
+      ],
+      "why": {
+        "inject.shell|src/handlers/comment-handlers.ts": "`gh issue comment ${args.issue_number} ...` through execAsync, the exact lines the CVE-2025-53818 advisory links.",
+        "inject.shell|src/handlers/issue-handlers.ts": "Issue title, labels and numbers pasted into gh commands.",
+        "inject.shell|src/handlers/label-handlers.ts": "Label names pasted into gh commands.",
+        "ai.injection_risk": "MCP server that also reads GitHub issues (untrusted text) into the model.",
+        "inject.shell|src/utils/exec.ts": "Only defines the execAsync wrapper; the bug is where it's called.",
+        "secrets.*": "No keys."
+      }
+    },
+    {
+      "name": "juice-shop",
+      "url": "https://github.com/juice-shop/juice-shop.git",
+      "sha": "266448aba68cd8ba5915f526a128da4fa7bc3f9f",
+      "kind": "OWASP Juice Shop (deliberately insecure web shop)",
+      "must": [
+        "inject.sql|routes/login.ts",
+        "inject.sql|routes/search.ts",
+        "inject.eval|routes/userProfile.ts",
+        "secrets.hardcoded|lib/insecurity.ts",
+        "server.path|routes/fileServer.ts",
+        "server.path|routes/keyServer.ts",
+        "server.redirect|routes/redirect.ts",
+        "server.ssrf|routes/profileImageUrlUpload.ts",
+        "xss.raw_html|frontend/src/app/search-result/search-result.component.ts",
+        "xss.raw_html|frontend/src/app/track-result/track-result.component.ts"
+      ],
+      "must_not": [
+        "inject.shell*",
+        "data.rls_off*",
+        "aitools.*"
+      ],
+      "why": {
+        "inject.sql|routes/login.ts": "sequelize.query with `${req.body.email}` in the SQL (login admin challenge).",
+        "inject.sql|routes/search.ts": "Search criteria pasted into LIKE '%${criteria}%' (UNION injection challenge).",
+        "inject.eval|routes/userProfile.ts": "eval(code) on part of the username (SSTI challenge).",
+        "secrets.hardcoded|lib/insecurity.ts": "RSA private key for JWT signing in the source.",
+        "server.path|routes/fileServer.ts": "res.sendFile(path.resolve('ftp/', file)) with file from params, guarded only by an extension check that the null-byte challenge bypasses.",
+        "server.path|routes/keyServer.ts": "Same pattern for encryption keys.",
+        "server.redirect|routes/redirect.ts": "res.redirect(toUrl) from query.to; the allowlist check uses includes() and is bypassable.",
+        "server.ssrf|routes/profileImageUrlUpload.ts": "fetch(url) with url from req.body.imageUrl (SSRF challenge).",
+        "xss.raw_html|frontend/src/app/search-result/search-result.component.ts": "bypassSecurityTrustHtml(queryParam) (DOM XSS challenge).",
+        "xss.raw_html|frontend/src/app/track-result/track-result.component.ts": "bypassSecurityTrustHtml with the order id (reflected XSS challenge).",
+        "inject.shell*": "No shell commands built from input.",
+        "data.rls_off*": "No Supabase.",
+        "aitools.*": "No AI tool configs."
+      },
+      "known_gaps": {
+        "secrets.weak_hash": "lib/insecurity.ts hashes passwords with MD5, but the word 'password' only appears where hash() is called in another file (routes/login.ts), so the scan doesn't connect them.",
+        "inject.eval|routes/captcha.ts": "Also flagged (eval on a string), but the expression is built from random numbers on the server, so it isn't exploitable. Listed so nobody counts it as a catch."
+      }
+    },
+    {
+      "name": "damn-vulnerable-llm-agent",
+      "url": "https://github.com/ReversecLabs/damn-vulnerable-llm-agent.git",
+      "sha": "c0cf9a14adad76e9d6a53c41741f625334bd9971",
+      "kind": "Deliberately vulnerable LangChain agent",
+      "must": [
+        "inject.sql|transaction_db.py"
+      ],
+      "must_not": [
+        "secrets.*",
+        "inject.shell*"
+      ],
+      "why": {
+        "inject.sql|transaction_db.py": "get_user_transactions runs f\"SELECT * FROM Transactions WHERE userId = '{str(userId)}'\" with the userId the agent passes, the lab's intended prompt-to-SQL injection.",
+        "secrets.*": "Keys come from .env, which isn't committed.",
+        "inject.shell*": "No shell commands."
+      }
+    },
+    {
+      "name": "damn-vulnerable-mcp-server",
+      "url": "https://github.com/harishsg993010/damn-vulnerable-MCP-server.git",
+      "sha": "cdc4c6b5b76353203effcb26058e50fa6067d3a6",
+      "kind": "Deliberately vulnerable MCP servers (15 challenges)",
+      "must": [
+        "inject.shell|challenges/hard/challenge9/server.py",
+        "inject.shell|challenges/hard/challenge8/server.py",
+        "inject.eval|challenges/hard/challenge8/server.py",
+        "inject.eval|challenges/medium/challenge5/server.py",
+        "aitools.tool_poisoning|challenges/easy/challenge2/server.py",
+        "aitools.tool_poisoning|challenges/medium/challenge4/server.py",
+        "aitools.tool_poisoning|challenges/hard/challenge10/server.py",
+        "aitools.tool_poisoning|challenges/supply_chain/challenge14/server.py",
+        "secrets.hardcoded|challenges/easy/challenge2/server.py",
+        "ai.injection_risk"
+      ],
+      "must_not": [
+        "data.*",
+        "inject.sql*"
+      ],
+      "why": {
+        "inject.shell|challenges/hard/challenge9/server.py": "_run_shell(cmd) runs subprocess.run(cmd, shell=True) with tool input.",
+        "inject.shell|challenges/hard/challenge8/server.py": "shell=True with a bypassable blocklist.",
+        "inject.eval|challenges/hard/challenge8/server.py": "exec(code, ...) and eval(code) on tool input.",
+        "inject.eval|challenges/medium/challenge5/server.py": "eval(expression, {'__builtins__': {}}) on tool input; the empty builtins don't make it safe.",
+        "aitools.tool_poisoning|challenges/easy/challenge2/server.py": "Tool docstring hides an <IMPORTANT> block telling the model to read and reveal internal://secret_config.",
+        "aitools.tool_poisoning|challenges/medium/challenge4/server.py": "Tool result appends hidden <IMPORTANT> instructions (rug pull).",
+        "aitools.tool_poisoning|challenges/hard/challenge10/server.py": "Tool description tells the model to call another tool.",
+        "aitools.tool_poisoning|challenges/supply_chain/challenge14/server.py": "Tool text tells the model to read and send credentials.",
+        "secrets.hardcoded|challenges/easy/challenge2/server.py": "A planted Stripe-style live key in the server config.",
+        "ai.injection_risk": "MCP servers: tool input is model-chosen.",
+        "data.*": "No Supabase or Firebase.",
+        "inject.sql*": "Data is held in Python dicts, not SQL."
+      }
+    },
+    {
+      "name": "saas-starter",
+      "url": "https://github.com/nextjs/saas-starter.git",
+      "sha": "6e33e58b1e553a41fe22e6b941a7229a002de361",
+      "kind": "Production template: Next.js, Stripe, Drizzle, own auth",
+      "must": [
+        "xss.no_csp"
+      ],
+      "must_not": [
+        "inject.*",
+        "secrets.*",
+        "data.*",
+        "server.*",
+        "xss.raw_html*",
+        "ai.*",
+        "aitools.*"
+      ],
+      "why": {
+        "xss.no_csp": "next.config.ts sets no headers and there's no middleware CSP.",
+        "inject.*": "Queries go through Drizzle.",
+        "secrets.*": "Keys come from env.",
+        "data.*": "Data changes go through server actions that check the user with getUser(); no Supabase or Firebase.",
+        "server.*": "No user-chosen URLs or file paths.",
+        "xss.raw_html*": "No raw HTML.",
+        "ai.*": "No AI features.",
+        "aitools.*": "No AI tool configs."
+      }
+    },
+    {
+      "name": "chatbot",
+      "url": "https://github.com/vercel/chatbot.git",
+      "sha": "a8989b522fa3672a2ae52f053105e40993b36ca1",
+      "kind": "Production template: AI chat app (Vercel AI SDK, tools, Postgres)",
+      "must": [
+        "xss.no_csp",
+        "ai.markdown_images|components/ai-elements/message.tsx"
+      ],
+      "must_not": [
+        "inject.*",
+        "secrets.*",
+        "xss.raw_html*",
+        "server.*",
+        "data.*",
+        "aitools.*"
+      ],
+      "why": {
+        "xss.no_csp": "No Content-Security-Policy in next.config.ts or middleware, and replies are rendered as markdown, so it's raised to medium.",
+        "inject.*": "Drizzle queries; tools don't run code.",
+        "secrets.*": "Env only.",
+        "xss.raw_html*": "dangerouslySetInnerHTML only for a constant theme script; innerHTML only with renderToString output.",
+        "server.*": "No user-chosen URLs or paths.",
+        "data.*": "Routes that write data (chat, document, history, vote) call auth() first; the ones without it are the NextAuth handlers and read-only lists.",
+        "aitools.*": "No AI tool configs.",
+        "ai.markdown_images|components/ai-elements/message.tsx": "Model replies render through Streamdown, whose shipped defaults (2.3.0) are allowedImagePrefixes: [\"*\"], so a reply can load an image from any host. No img-src CSP either."
+      }
+    },
+    {
+      "name": "chatbot-ui",
+      "url": "https://github.com/mckaywrigley/chatbot-ui.git",
+      "sha": "81328b61d2a4ab597a7a057be70e785cf756d9f8",
+      "kind": "AI chat app: Supabase, file uploads, retrieval, custom tools",
+      "must": [
+        "ai.injection_risk",
+        "xss.no_csp",
+        "ai.markdown_images|components/messages/message-markdown-memoized.tsx"
+      ],
+      "must_not": [
+        "data.rls_off*",
+        "data.policy_open*",
+        "inject.*",
+        "secrets.*",
+        "xss.raw_html*"
+      ],
+      "why": {
+        "ai.injection_risk": "Uploaded files are embedded and retrieved into the prompt, and the assistant can call user-defined tool APIs (app/api/chat/tools/route.ts).",
+        "xss.no_csp": "No CSP set.",
+        "data.rls_off*": "Every table in supabase/migrations enables row level security.",
+        "data.policy_open*": "Policies check auth.uid().",
+        "inject.*": "Supabase client queries only.",
+        "secrets.*": "Env only.",
+        "xss.raw_html*": "Markdown rendered without raw HTML.",
+        "ai.markdown_images|components/messages/message-markdown-memoized.tsx": "react-markdown renders replies; the img override in message-markdown.tsx only adds a CSS class and passes any src through."
+      }
+    },
+    {
+      "name": "nextjs-subscription-payments",
+      "url": "https://github.com/vercel/nextjs-subscription-payments.git",
+      "sha": "bdd0813206e47e6b218d42f15a7976c8a0d3c3eb",
+      "kind": "Production template: Supabase auth and tables, Stripe",
+      "must": [
+        "xss.no_csp"
+      ],
+      "must_not": [
+        "data.rls_off*",
+        "data.policy_open*",
+        "inject.*",
+        "secrets.*",
+        "server.*"
+      ],
+      "why": {
+        "xss.no_csp": "No CSP set.",
+        "data.rls_off*": "schema.sql enables RLS on every public table.",
+        "data.policy_open*": "Write policies check auth.uid().",
+        "inject.*": "Supabase client queries only.",
+        "secrets.*": "Env only; the service role key is only read server-side.",
+        "server.*": "Redirects go to fixed paths."
+      }
+    },
+    {
+      "name": "taxonomy",
+      "url": "https://github.com/shadcn-ui/taxonomy.git",
+      "sha": "298a8857c7128a0d121e7f699dfd729f23b3966d",
+      "kind": "Production template: Next.js, NextAuth, Prisma, Stripe",
+      "must": [
+        "xss.no_csp"
+      ],
+      "must_not": [
+        "inject.*",
+        "secrets.*",
+        "data.*",
+        "server.*",
+        "xss.raw_html*"
+      ],
+      "why": {
+        "xss.no_csp": "No CSP set.",
+        "inject.*": "Prisma queries.",
+        "secrets.*": "Env only.",
+        "data.*": "Routes that write data call getServerSession(); the Stripe webhook verifies the signature with constructEvent.",
+        "server.*": "No user-chosen URLs or paths.",
+        "xss.raw_html*": "No raw HTML."
+      }
+    },
+    {
+      "name": "commerce",
+      "url": "https://github.com/vercel/commerce.git",
+      "sha": "f7521d57d29f0eb3d23c1399cf9bb299d61fcd21",
+      "kind": "Production template: Shopify storefront",
+      "must": [
+        "xss.raw_html|components/prose.tsx"
+      ],
+      "must_not": [
+        "inject.*",
+        "secrets.*",
+        "data.*",
+        "server.*"
+      ],
+      "why": {
+        "xss.raw_html|components/prose.tsx": "Renders Shopify page HTML with dangerouslySetInnerHTML and no sanitizer. The store owner writes that HTML, so the risk is low, but anyone with Shopify admin access can put a script on the site; the finding is accurate.",
+        "inject.*": "GraphQL with variables.",
+        "secrets.*": "Env only.",
+        "data.*": "No database writes.",
+        "server.*": "No user-chosen URLs or paths."
+      }
+    }
+  ]
+}
