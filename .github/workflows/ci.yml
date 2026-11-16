@@ -15,7 +15,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        skill: [findable, compliance]
+        skill: [findable, compliance, guarded]
         python: ["3.10", "3.13"]
     defaults:
       run:
@@ -47,7 +47,7 @@ jobs:
       - uses: astral-sh/setup-uv@v6
       - name: Dependency vulnerabilities (pip-audit)
         run: |
-          for skill in findable compliance; do
+          for skill in findable compliance guarded; do
             (cd "skills/$skill/cli" && uv export --frozen --no-dev --no-hashes --no-emit-project > "$RUNNER_TEMP/$skill.txt")
             uvx pip-audit --strict -r "$RUNNER_TEMP/$skill.txt"
           done

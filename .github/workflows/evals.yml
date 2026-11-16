@@ -31,3 +31,24 @@ jobs:
         with:
           name: compliance-eval-results
           path: evals/compliance/RESULTS.md
+
+  guarded:
+    name: guarded eval (14 open-source projects)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.13"
+      - uses: actions/cache@v4
+        with:
+          path: evals/guarded/.cache
+          key: guarded-eval-${{ hashFiles('evals/guarded/repos.json') }}
+      - name: Run eval
+        run: uv run --frozen --project skills/guarded/cli python evals/guarded/run.py
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: guarded-eval-results
+          path: evals/guarded/RESULTS.md
