@@ -1,6 +1,6 @@
 # findable accuracy eval
 
-findable 0.6.0 · run 2026-11-15 · 12 real sites · 31 hand-verified checks · **12/12 sites pass**
+findable 0.6.2 · run 2026-11-15 · 12 real sites · 31 hand-verified checks · **12/12 sites pass**
 
 Each site is scanned live (12 pages). A site passes when findable reports every real problem we verified by hand (`must`) and none of the false alarms it used to raise (`must_not`).
 
