@@ -97,11 +97,15 @@ You need [uv](https://docs.astral.sh/uv/getting-started/installation/) installed
 /plugin install sow@sow
 ```
 
-**Other assistants (like Codex):**
+Already installed? Get the latest version with `/plugin marketplace update sow`, then `/plugin update sow@sow`, and restart Claude Code.
+
+**Other assistants (like Codex):** this needs [Node.js](https://nodejs.org/) 22.20 or newer.
 
 ```bash
-npx skills add Nithish-Yenaganti/sow
+npx skills add Nithish-Yenaganti/sow -g
 ```
+
+`-g` installs for your user, so the skills work in every project. Leave it out to install into the current project only. Run `npx skills update` later to get new versions.
 
 ## Use
 
