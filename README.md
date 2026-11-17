@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/banner.svg" alt="SOW — Stay On Web" width="100%">
+  <img src="assets/banner.gif" alt="SOW — Stay On Web: findable (can people find your site?), compliance (is it set up the right way?), guarded (does it ship security holes?)" width="100%">
 </p>
 
 <p align="center">
