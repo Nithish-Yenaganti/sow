@@ -104,17 +104,18 @@ def scan(
     run = {"at": datetime.now(timezone.utc).isoformat(timespec="seconds"), "name": root.name, "files": res["files_scanned"],
            "packs": res["packs"], "version": __version__}
     rp = store.write_report(root, store.report_md(run, items, dmap))
+    hp = store.write_report_html(root, store.report_html(run, items, dmap))
     open_q = decisions.open_questions(items, p, dmap, decisions.load(root))
     counts = {w: sum(1 for i in items if i["who"] == w) for w in ("agent", "user", "lawyer")}
     out = {"status": "ok", "not_legal_advice": NOT_LEGAL_ADVICE, "untrusted_fields": UNTRUSTED, "run": run, "delta": delta,
            "counts": counts, "findings": items, "data_map": dmap, "vendors": res["vendors"], "legal_pages": res["legal_pages"],
-           "consent_tool_found": res["consent_tool"], "decisions_open": len(open_q), "report": str(rp),
+           "consent_tool_found": res["consent_tool"], "decisions_open": len(open_q), "report": str(rp), "report_html": str(hp),
            "next": "compliance decide --json"}
     if as_json:
         _out(out)
     else:
         typer.echo(f"{len(items)} findings ({counts['agent']} the skill can fix, {counts['user']} for you, "
-                   f"{counts['lawyer']} for a lawyer). Report: {rp}")
+                   f"{counts['lawyer']} for a lawyer). Report: {hp}")
 
 
 @app.command()
@@ -237,7 +238,7 @@ def report(
     """Latest findings without re-scanning."""
     root = _root(path)
     _out({"status": "ok", "findings": store.active(store.load_findings(root)), "data_map": store.load_data_map(root),
-          "report": str(prof.state_dir(root) / "report.md")})
+          "report": str(prof.state_dir(root) / "report.md"), "report_html": str(prof.state_dir(root) / "report.html")})
 
 
 if __name__ == "__main__":

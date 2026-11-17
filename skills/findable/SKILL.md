@@ -38,8 +38,8 @@ Run the plan's `scan_command` exactly. If it returns `needs_input`, handle it as
 
 Write for someone who isn't technical:
 1. The site, pages checked, and whether the live site was included.
-2. How many things can be improved, and how many are important.
-3. Findings by `group`, each group's question as a heading: **Can Google and AI find your pages?** (`find`) · **Can AI tools read your pages?** (`read`) · **How you show up in results** (`show`) · **Do AI answers mention you?** (`cite`) · **Searches you could win** (`grow`) · **Things only you can do** (`you`). Up to 3 per group, using each `plain` sentence as written, most important first; "and N more in the report" for the rest. Leave out `severity: low` items (except `you` items and ones that came back) and end with "Plus N minor improvements in the report."
+2. How many things can be improved, and how many to fix now.
+3. Findings by `group`, each group's question as a heading: **Can Google and AI find your pages?** (`find`) · **Can AI tools read your pages?** (`read`) · **How you show up in results** (`show`) · **Do AI answers mention you?** (`cite`) · **Searches you could win** (`grow`) · **Things only you can do** (`you`). Up to 3 per group, using each `plain` sentence as written, "Fix now" first (critical/high = **Fix now**, medium = **Fix soon**, low = **When you can**); "and N more in the report" for the rest. Leave out `severity: low` items (except `you` items and ones that came back) and end with "Plus N minor improvements in the report."
 4. The path to `.findable/report.html`.
 
 No jargon unless asked; then explain with `title`, `current`, `target`, `evidence` and `references/checks.md`.

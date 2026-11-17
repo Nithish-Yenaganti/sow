@@ -7,6 +7,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from guarded import atomic
+from guarded import report_html as rh
 from guarded.rules import GROUPS, SEVERITY_RANK
 
 ACTIVE = {"new", "open"}
@@ -85,20 +86,40 @@ def report_md(run: dict, items: list[dict]) -> str:
              f"Package lookups: {'on' if run['online'] else 'off (run with --online to check packages and known CVEs)'}.", "",
              "> This is a code check that looks for known risky patterns. It is not a penetration test and can't prove "
              "an app is secure. It can also flag code that is actually fine: each item says why, so you can check.", "",
-             f"**{len(items)} things to look at: {counts['high']} high, {counts['medium']} medium, {counts['low']} low.**", ""]
+             f"**{len(items)} things to look at: {counts['high']} to fix now, {counts['medium']} to fix soon, "
+             f"{counts['low']} when you can.**", ""]
     for g, title in GROUPS.items():
         rows = [i for i in items if i["group"] == g]
         if not rows:
             continue
         lines += [f"## {title}", ""]
         for i in rows:
-            lines.append(f"- **{i['severity']}** {i['plain']} *(who: {WHO[i['who']]}; `{i['fingerprint']}`)*")
+            lines.append(f"- **{rh.ACTION_LABEL[i['severity']]}** {i['plain']} *(who: {WHO[i['who']]}; `{i['fingerprint']}`)*")
             if i.get("files"):
                 lines.append(f"  - where: {', '.join(i['files'][:5])}")
             if i.get("sources"):
                 lines.append(f"  - based on: {', '.join(i['sources'])} (see references/sources.md)")
         lines.append("")
     return "\n".join(lines)
+
+
+WHO_HTML = {"agent": "The skill can fix this", "user": "You do this"}
+
+
+def report_html(run: dict, items: list[dict]) -> str:
+    lookups = "on" if run.get("online") else "off (run with --online to check packages and known CVEs)"
+    return rh.render(
+        title=f"Security report: {run['name']}",
+        meta=[f"Scanned {run['files']} files on {rh._e(run['at'][:10])} with guarded {rh._e(run['version'])} · "
+              f"package lookups: {rh._e(lookups)}"],
+        note="This is a code check that looks for known risky patterns. It is not a penetration test and can't prove "
+             "an app is secure. It can also flag code that is actually fine: each item says why, so you can check.",
+        items=items, groups=GROUPS, who_label=WHO_HTML,
+        footer=f"guarded {run.get('version', '')} · findings are tracked across runs in .guarded/findings.json")
+
+
+def write_report_html(root: Path, text: str) -> Path:
+    return atomic.write_text(state_dir(root) / "report.html", text)
 
 
 def write_report(root: Path, text: str) -> Path:

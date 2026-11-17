@@ -12,6 +12,8 @@ from findable import __version__
 from findable.plain import CHANGE_LABEL, GROUPS, describe
 
 MARK = {"critical": "✗", "high": "✗", "medium": "⚠", "low": "·"}
+# What each severity means for the user. The same wording in every SOW skill (tests/compliance/test_report_html.py).
+ACTION_LABEL = {"critical": "Fix now", "high": "Fix now", "medium": "Fix soon", "low": "When you can"}
 
 
 def do_first(items: list[dict], n: int = 3) -> list[dict]:
@@ -53,7 +55,7 @@ def terminal(run: dict, items: list[dict], delta: dict, report_path: str) -> str
         lines.append("Nothing to fix in the site. ✓")
     else:
         lines.append(f"Found {len(fixable)} thing{'s' if len(fixable) != 1 else ''} to improve"
-                     + (f" ({urgent} important)" if urgent else "") + ".")
+                     + (f" ({urgent} to fix now)" if urgent else "") + ".")
     if run.get("previous_run") and (delta["fixed"] or delta["regressed"]):
         lines.append(f"Since last time: {len(delta['fixed'])} fixed ✓"
                      + (f", {len(delta['regressed'])} came back ✗" if delta["regressed"] else ""))
@@ -82,7 +84,7 @@ def html(run: dict, items: list[dict], delta: dict, dismissed: list[dict]) -> st
     order = sorted(by_page, key=lambda u: (u != "site", u))
     return env.get_template("report.html").render(
         run=run, items=items, delta=delta, top=do_first(items, 5), pages=[(u, by_page[u]) for u in order],
-        groups=grouped(items), minor=[r for r in items if is_minor(r)], change_label=CHANGE_LABEL,
+        groups=grouped(items), minor=[r for r in items if is_minor(r)], change_label=CHANGE_LABEL, action_label=ACTION_LABEL,
         dismissed=dismissed, version=__version__,
         generated=datetime.now().strftime("%Y-%m-%d %H:%M"),
         counts={s: sum(1 for r in items if r["severity"] == s and r.get("who") != "user")
