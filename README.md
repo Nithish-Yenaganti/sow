@@ -13,6 +13,10 @@
 
 **Helpers for your AI coding assistant that make sure your website can be found, is set up the right way, and doesn't ship the security holes AI-written code tends to have.**
 
+<p align="center">
+  <a href="https://youtube.com/shorts/3wjLUe5T70M"><img src="assets/video-poster.png" alt="Watch the 1-minute video: Fix it on Friday, not on Monday" width="720"></a>
+</p>
+
 ## Why we made this
 
 Today anyone can build a website in an afternoon with an AI coding assistant. But three things often go wrong after that:
