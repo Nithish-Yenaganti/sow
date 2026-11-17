@@ -8,6 +8,7 @@ from pathlib import Path
 
 from compliance import atomic
 from compliance.profile import state_dir
+from compliance import report_html as rh
 from compliance.rules import GROUPS, SEVERITY_RANK
 
 ACTIVE = {"new", "open"}
@@ -92,12 +93,12 @@ def active(store: dict) -> list[dict]:
 
 
 def report_md(run: dict, items: list[dict], data_map: list[dict]) -> str:
-    high = sum(1 for i in items if i["severity"] == "high")
+    now = sum(1 for i in items if i["severity"] == "high")
     lines = [f"# Compliance report: {run['name']}", "",
              f"Scanned {run['files']} files on {run['at'][:10]}. Packs: {', '.join(run['packs'])}.", "",
              "> This report finds technical gaps. It is not legal advice and doesn't make your site 'compliant'. "
              "Items marked ⚖️ need a lawyer.", "",
-             f"**{len(items)} things to look at, {high} important.**", ""]
+             f"**{len(items)} things to look at, {now} to fix now.**", ""]
     if data_map:
         lines += ["## What your app collects", "", "| Data | Why | Legal basis | Kept for | Shared with |", "|---|---|---|---|---|"]
         lines += [f"| {d['data']} | {d['purpose']} | {d['lawful_basis']} | {d.get('retention') or 'not set yet'} | "
@@ -110,13 +111,38 @@ def report_md(run: dict, items: list[dict], data_map: list[dict]) -> str:
         lines += [f"## {title}", ""]
         for i in rows:
             mark = "⚖️ " if i["who"] == "lawyer" else ""
-            lines.append(f"- **{i['severity']}** {mark}{i['plain']} *(who: {WHO[i['who']]}; `{i['fingerprint']}`)*")
+            lines.append(f"- **{rh.ACTION_LABEL[i['severity']]}** {mark}{i['plain']} *(who: {WHO[i['who']]}; `{i['fingerprint']}`)*")
             if i.get("files"):
                 lines.append(f"  - where: {', '.join(i['files'][:5])}")
             if i.get("sources"):
                 lines.append(f"  - sources: {', '.join(i['sources'])} (see references/sources.md)")
         lines.append("")
     return "\n".join(lines)
+
+
+WHO_HTML = {"agent": "The skill can fix this", "user": "You do this", "lawyer": "Ask a lawyer"}
+
+
+def report_html(run: dict, items: list[dict], data_map: list[dict]) -> str:
+    table = ""
+    if data_map:
+        e = rh._e
+        rows = "".join(f"<tr><td>{e(d['data'])}</td><td>{e(d['purpose'])}</td><td>{e(d['lawful_basis'])}</td>"
+                       f"<td>{e(d.get('retention') or 'not set yet')}</td><td>{e(', '.join(d['shared_with']) or 'nobody')}</td></tr>"
+                       for d in data_map)
+        table = ("<h2>What your app collects</h2><section class='card'><table><thead><tr><th>Data</th><th>Why</th>"
+                 f"<th>Legal basis</th><th>Kept for</th><th>Shared with</th></tr></thead><tbody>{rows}</tbody></table></section>")
+    return rh.render(
+        title=f"Compliance report: {run['name']}",
+        meta=[f"Scanned {run['files']} files on {rh._e(run['at'][:10])} · packs: {rh._e(', '.join(run['packs']))}"],
+        note="This report finds technical gaps. It is not legal advice and doesn't make your site 'compliant'. "
+             "Items marked ⚖️ need a lawyer.",
+        items=items, groups=GROUPS, who_label=WHO_HTML, before_findings=table,
+        footer=f"compliance {run.get('version', '')} · findings are tracked across runs in .compliance/findings.json")
+
+
+def write_report_html(root: Path, text: str) -> Path:
+    return atomic.write_text(state_dir(root) / "report.html", text)
 
 
 def write_report(root: Path, text: str) -> Path:

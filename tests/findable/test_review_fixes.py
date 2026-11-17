@@ -172,7 +172,7 @@ def test_plain_summary_is_grouped():
     out = terminal({"url": "https://acme.test", "pages": 3, "live_ok": True, "app": "."}, [f, u],
                    {"fixed": [], "regressed": [], "new": [], "open": []}, ".findable/report.html")
     assert "How you show up in results" in out and "Things only you can do" in out
-    assert "The page /pricing has no title" in out and "Found 1 thing to improve (1 important)." in out
+    assert "The page /pricing has no title" in out and "Found 1 thing to improve (1 to fix now)." in out
 
 
 class SlashHandler(BaseHTTPRequestHandler):

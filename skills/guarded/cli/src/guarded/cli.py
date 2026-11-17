@@ -78,6 +78,7 @@ def scan(online: Online = False, as_json: AsJson = False, sarif_out: Sarif = Non
     run = {"at": datetime.now(timezone.utc).isoformat(timespec="seconds"), "name": root.name, "files": res["files_scanned"],
            "online": online, "version": __version__, "stack": res["stack"]}
     rp = store.write_report(root, store.report_md(run, items))
+    hp = store.write_report_html(root, store.report_html(run, items))
     sarif_path = _write_sarif(root, items, sarif_out) if sarif_out else None
     counts = {s: sum(1 for i in items if i["severity"] == s) for s in ("high", "medium", "low")}
     who = {w: sum(1 for i in items if i["who"] == w) for w in ("agent", "user")}
@@ -93,12 +94,13 @@ def scan(online: Online = False, as_json: AsJson = False, sarif_out: Sarif = Non
     if pk.get("errors"):
         notes.append("Some lookups failed (" + "; ".join(pk["errors"]) + "). Results for packages may be incomplete.")
     out = {"status": "ok", "not_a_pentest": NOT_A_PENTEST, "untrusted_fields": UNTRUSTED, "run": run, "delta": delta,
-           "counts": counts, "who": who, "packages": pk, "findings": items, "suppressed": res["suppressed"], "report": str(rp), "sarif": sarif_path,
+           "counts": counts, "who": who, "packages": pk, "findings": items, "suppressed": res["suppressed"], "report": str(rp), "report_html": str(hp), "sarif": sarif_path,
            "notes": notes}
     if as_json:
         _out(out)
     else:
-        typer.echo(f"{len(items)} findings ({counts['high']} high, {counts['medium']} medium, {counts['low']} low). Report: {rp}")
+        typer.echo(f"{len(items)} findings ({counts['high']} to fix now, {counts['medium']} to fix soon, {counts['low']} when you can). "
+                   f"Report: {hp}")
 
 
 @app.command()
@@ -106,7 +108,8 @@ def report(as_json: AsJson = True, sarif_out: Sarif = None, root: Root = Path(".
     """Latest findings without re-scanning."""
     items = store.active(store.load_findings(root))
     sarif_path = _write_sarif(root, items, sarif_out) if sarif_out else None
-    _out({"status": "ok", "findings": items, "report": str(store.state_dir(root) / "report.md"), "sarif": sarif_path})
+    _out({"status": "ok", "findings": items, "report": str(store.state_dir(root) / "report.md"),
+          "report_html": str(store.state_dir(root) / "report.html"), "sarif": sarif_path})
 
 
 @app.command()
