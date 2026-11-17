@@ -71,7 +71,7 @@ Needs [uv](https://docs.astral.sh/uv/getting-started/installation/). Then in Cla
 /plugin install sow@sow
 ```
 
-Or for any assistant: `npx skills add Nithish-Yenaganti/sow`
+Or for any assistant (needs Node.js 22.20 or newer): `npx skills add Nithish-Yenaganti/sow -g`
 
 ## Where results go
 
