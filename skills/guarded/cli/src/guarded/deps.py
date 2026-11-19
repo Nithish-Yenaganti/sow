@@ -85,7 +85,7 @@ def lookalike(name: str, ecosystem: str) -> str | None:
 # --- network ------------------------------------------------------------------------------------------------------
 class Net:
     def __init__(self, root: Path, fetch=None):
-        self.path = root / ".guarded" / "cache.json"
+        self.path = atomic.state_dir(root) / "cache.json"
         try:
             self.cache = json.loads(self.path.read_text())
         except (OSError, ValueError):
@@ -117,6 +117,8 @@ class Net:
             return None, None
         if status in (200, 404):
             self.cache[key] = {"t": time.time(), "s": status, "d": data}
+        else:
+            self.errors.append(f"{urllib.parse.urlparse(url).netloc}: HTTP {status}")
         return status, data
 
     def save(self) -> None:
@@ -145,7 +147,9 @@ def _npm_info(net: Net, name: str) -> dict:
         if status == 404:
             return {"missing": True}
         if status != 200:
-            return info
+            return info | {"unknown": True}
+        if not isinstance(doc, dict) or not isinstance(doc.get("time"), dict):
+            return info | {"unknown": True}
         created = ((doc or {}).get("time") or {}).get("created")
         if created:
             info["created"] = created
@@ -159,10 +163,10 @@ def _npm_info(net: Net, name: str) -> dict:
 def _pypi_info(net: Net, name: str) -> dict:
     url = f"https://pypi.org/pypi/{urllib.parse.quote(name)}/json"
     status, doc = net.get(url)
-    if status is None:
-        return {"unknown": True}
     if status == 404:
         return {"missing": True}
+    if status != 200 or not isinstance(doc, dict) or not isinstance(doc.get("releases"), dict):
+        return {"unknown": True}
     times = [f.get("upload_time_iso_8601") for files in ((doc or {}).get("releases") or {}).values() for f in files]
     times = sorted(t for t in times if t)
     if url in net.cache:
@@ -200,7 +204,9 @@ def _vuln_summary(v: dict, dep: Dep) -> tuple[str, str, str | None, str]:
 def check(pj: Project, online: bool, fetch=None) -> tuple[list[Finding], dict]:
     out: list[Finding] = []
     deps = [d for d in pj.deps if d.name not in pj.local_names]
-    meta = {"packages": len(deps), "with_versions": sum(1 for d in deps if d.version), "online": online, "errors": []}
+    meta = {"packages": len(deps), "with_versions": sum(1 for d in deps if d.version), "online": online, "errors": [],
+            "dependencies": [{"name": d.name, "ecosystem": d.ecosystem, "version": d.version} for d in deps],
+            "checked": {r: [] for r in ("pkg.not_found", "pkg.suspicious", "pkg.vulnerable")}}
     for d in deps:
         near = lookalike(d.name, d.ecosystem)
         if near:
@@ -209,10 +215,18 @@ def check(pj: Project, online: bool, fetch=None) -> tuple[list[Finding], dict]:
         return out, meta
     net = Net(pj.root, fetch)
     popular = set(POPULAR_NPM) | set(POPULAR_PY)
-    lookups = [d for d in deps if d.name not in popular][:MAX_LOOKUPS]
+    named = {(d.ecosystem, d.name): d for d in deps}
+    lookups = [d for d in named.values() if d.name not in popular][:MAX_LOOKUPS]
+    if len(lookups) < sum(d.name not in popular for d in named.values()):
+        net.errors.append("Package lookup budget reached; some packages were not checked")
     with ThreadPoolExecutor(8) as ex:
         infos = list(ex.map(lambda d: _npm_info(net, d.name) if d.ecosystem == "npm" else _pypi_info(net, d.name), lookups))
     for d, info in zip(lookups, infos):
+        if not info.get("unknown"):
+            for rule in ("pkg.not_found", "pkg.suspicious"):
+                meta["checked"][rule].append(f"{d.ecosystem}:{d.name}")
+        else:
+            net.errors.append(f"{d.ecosystem}:{d.name}: incomplete registry response")
         where = "npm" if d.ecosystem == "npm" else "PyPI"
         if info.get("missing"):
             out.append(Finding("pkg.not_found", d.name, where, files=[d.source], key=d.ecosystem))
@@ -229,16 +243,23 @@ def check(pj: Project, online: bool, fetch=None) -> tuple[list[Finding], dict]:
         if info.get("weekly", 0) > 50_000:
             out[:] = [f for f in out if not (f.rule == "pkg.lookalike" and f.subject == d.name)]
     # Known vulnerabilities (OSV). Only exact versions can be checked.
-    versioned = [d for d in deps if d.version]
+    versioned = list({(d.ecosystem, d.name, d.version): d for d in deps if d.version}.values())
     vulns: dict[str, list[str]] = {}
     for i in range(0, len(versioned), OSV_BATCH):
         chunk = versioned[i: i + OSV_BATCH]
         q = {"queries": [{"package": {"name": d.name, "ecosystem": d.ecosystem}, "version": d.version} for d in chunk]}
         status, res = net.get("https://api.osv.dev/v1/querybatch", q)
-        if status != 200 or not res:
+        if status != 200 or not isinstance(res, dict) or not isinstance(res.get("results"), list) \
+                or len(res["results"]) != len(chunk):
+            net.errors.append("OSV: advisory batch unavailable or incomplete")
             continue
         for d, r in zip(chunk, res.get("results", [])):
-            ids = [v["id"] for v in (r or {}).get("vulns", []) or []]
+            if not isinstance(r, dict) or not isinstance(r.get("vulns", []), list) or any(
+                    not isinstance(v, dict) or not isinstance(v.get("id"), str) for v in r.get("vulns", [])):
+                net.errors.append(f"OSV: invalid advisory response for {d.name}")
+                continue
+            ids = [v["id"] for v in r.get("vulns", [])]
+            meta["checked"]["pkg.vulnerable"].append(f"{d.ecosystem}:{d.name}@{d.version}")
             if ids:
                 vulns[f"{d.ecosystem}:{d.name}@{d.version}"] = ids
     want = list(dict.fromkeys(i for ids in vulns.values() for i in ids))[:MAX_VULN_DETAILS]
@@ -268,11 +289,33 @@ def check(pj: Project, online: bool, fetch=None) -> tuple[list[Finding], dict]:
         if malware:
             text = "it is listed as known malware. Remove it and check the machines that installed it. " + text
             worst = "high"
-        out.append(Finding("pkg.vulnerable", f"{d.name} {d.version}", text, files=[d.source],
+        sources = list(dict.fromkeys(x.source for x in deps
+                                    if (x.ecosystem, x.name, x.version) == (d.ecosystem, d.name, d.version)))
+        out.append(Finding("pkg.vulnerable", f"{d.name} {d.version}", text, files=sources,
                            evidence=[r[0] for r in top[:10]], severity=worst, key=d.ecosystem))
     net.save()
     meta["errors"] = net.errors[:5]
     return out, meta
+
+
+def was_checked(fingerprint: str, rec: dict, meta: dict) -> bool:
+    """Whether absence can prove an old package finding fixed, including after an upgrade."""
+    rule = rec.get("rule", fingerprint.split("|", 1)[0])
+    if rule not in ("pkg.not_found", "pkg.suspicious", "pkg.vulnerable"):
+        return True
+    if not meta["online"]:
+        return False
+    parts = fingerprint.split("|")
+    subject = rec.get("subject") or (parts[1] if len(parts) > 1 else "")
+    ecosystem = parts[-1]
+    name = subject.rsplit(" ", 1)[0] if rule == "pkg.vulnerable" else subject
+    present = [d for d in meta["dependencies"] if d["name"] == name and d["ecosystem"] == ecosystem]
+    if not present:
+        return True  # removed from the dependency inventory
+    checked = set(meta["checked"][rule])
+    if rule == "pkg.vulnerable":
+        return all(d["version"] and f"{ecosystem}:{name}@{d['version']}" in checked for d in present)
+    return f"{ecosystem}:{name}" in checked
 
 
 def _vkey(v: str):

@@ -53,7 +53,7 @@ def context(profile: dict, data_map: list[dict], vendors: list[dict], packs: lis
         "subscription": profile.get("charging") == "subscription",
         "charging": profile.get("charging") in ("one_time", "subscription"),
         "refund_text": REFUNDS.get(answers.get("refunds", ""), _fill("your refund rule")),
-        "ai_training": answers.get("ai_training", "no"),
+        "ai_training": answers.get("ai_training"),
         "ai_vendors": [v["name"] for v in vendors if v["kind"] == "ai"],
         "sells_or_shares": any(v["kind"] == "ads" for v in vendors),
     }

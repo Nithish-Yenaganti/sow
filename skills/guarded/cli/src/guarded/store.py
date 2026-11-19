@@ -6,7 +6,7 @@ import json
 from datetime import datetime, timezone
 from pathlib import Path
 
-from guarded import atomic
+from guarded import atomic, deps
 from guarded import report_html as rh
 from guarded.rules import GROUPS, SEVERITY_RANK
 
@@ -15,7 +15,7 @@ WHO = {"agent": "the skill can fix", "user": "you"}
 
 
 def state_dir(root: Path) -> Path:
-    return root / ".guarded"
+    return atomic.state_dir(root)
 
 
 def _now() -> str:
@@ -34,12 +34,12 @@ def save_findings(root: Path, store: dict) -> None:
     p.parent.mkdir(parents=True, exist_ok=True)
     ignore = p.parent / ".gitignore"
     if not ignore.exists():
-        ignore.write_text("# guarded scan output; keep it out of git\n*\n")
+        atomic.write_text(ignore, "# guarded scan output; keep it out of git\n*\n")
     atomic.write_json(p, store)
 
 
 def apply_run(store: dict, current: list[dict], only: set[str] | None = None, scope: set[str] | None = None,
-              suppressed: set[str] = frozenset()) -> dict:
+              suppressed: set[str] = frozenset(), package_checks: dict | None = None) -> dict:
     """scope: rules this run checked. Findings from rules it skipped (packages, when offline) stay as they were.
     suppressed: fingerprints a guarded-ignore comment silenced. They leave the active list but are not "fixed"."""
     seen, delta = set(), {"new": [], "fixed": [], "open": [], "suppressed": []}
@@ -62,6 +62,8 @@ def apply_run(store: dict, current: list[dict], only: set[str] | None = None, sc
         if fp in seen or rec["status"] not in ACTIVE or (only is not None and fp not in only):
             continue
         if scope is not None and rec.get("rule") not in scope:
+            continue
+        if package_checks is not None and not deps.was_checked(fp, rec, package_checks):
             continue
         if fp in suppressed:
             rec["status"] = "suppressed"

@@ -18,7 +18,7 @@ STATE_DIR = ".compliance"
 
 
 def state_dir(root: Path) -> Path:
-    return root / STATE_DIR
+    return atomic.state_dir(root)
 
 
 def _load(p: Path) -> dict:

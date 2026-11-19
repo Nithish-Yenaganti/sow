@@ -14,11 +14,19 @@ from typing import Annotated
 
 import typer
 
-from guarded import __version__, atomic, sarif, store
+from guarded import __version__, atomic, deps, sarif, store
 from guarded import scan as scanner
 from guarded.rules import RULES
 
-Root = Annotated[Path, typer.Option("--path", help="Project root", file_okay=False, resolve_path=True)]
+def _root(value: Path) -> Path:
+    try:
+        atomic.state_dir(value)
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    return value
+
+
+Root = Annotated[Path, typer.Option("--path", help="Project root", file_okay=False, resolve_path=True, callback=_root)]
 AsJson = Annotated[bool, typer.Option("--json/--text", help="JSON for the agent, or a short text summary")]
 Online = Annotated[bool, typer.Option("--online/--offline",
                                       help="Also look up packages on npm/PyPI and known vulnerabilities on OSV "
@@ -72,7 +80,8 @@ def scan(online: Online = False, as_json: AsJson = False, sarif_out: Sarif = Non
         raise typer.Exit(1)
     res = _run(root, online)
     st = store.load_findings(root)
-    delta = store.apply_run(st, res["finding_dicts"], scope=res["scope"], suppressed=_hushed(res))
+    delta = store.apply_run(st, res["finding_dicts"], scope=res["scope"], suppressed=_hushed(res),
+                            package_checks=res["packages"])
     store.save_findings(root, st)
     items = store.active(st)
     run = {"at": datetime.now(timezone.utc).isoformat(timespec="seconds"), "name": root.name, "files": res["files_scanned"],
@@ -119,12 +128,16 @@ def verify(
 ) -> None:
     """Re-scan and check the given findings. Exit 2 if any are still failing (or were only silenced by a comment)."""
     wanted = [i.strip() for i in ids.split(",") if i.strip()]
-    if not online and any(w.startswith(("pkg.not_found", "pkg.suspicious", "pkg.vulnerable")) for w in wanted):
-        online = True                                   # those can only be re-checked online
+    st = store.load_findings(root)
+    unknown = [fp for fp in wanted if fp not in st]
+    if not wanted or unknown:
+        _out({"status": "error", "checked": [{"fingerprint": fp, "result": "unknown fingerprint"} for fp in unknown],
+              "notes": ["Provide at least one known finding fingerprint."]})
+        raise typer.Exit(1)
     res = _run(root, online)
     now = {f["fingerprint"] for f in res["finding_dicts"]}
-    st = store.load_findings(root)
-    store.apply_run(st, res["finding_dicts"], only=set(wanted), scope=res["scope"], suppressed=_hushed(res))
+    store.apply_run(st, res["finding_dicts"], only=set(wanted), scope=res["scope"], suppressed=_hushed(res),
+                    package_checks=res["packages"])
     store.save_findings(root, st)
     hushed = _hushed(res)
 
@@ -133,10 +146,12 @@ def verify(
             return "still failing"
         if fp in hushed:
             return "suppressed by a guarded-ignore comment, not fixed"
+        if not deps.was_checked(fp, st[fp], res["packages"]):
+            return "not re-checked (requires successful online package lookups)"
         return "fixed" if fp in st else "unknown fingerprint"
     checked = [{"fingerprint": fp, "result": result(fp)} for fp in wanted]
     _out({"status": "ok", "checked": checked})
-    if any(c["result"] != "fixed" for c in checked if c["result"] != "unknown fingerprint"):
+    if any(c["result"] != "fixed" for c in checked):
         raise typer.Exit(EXIT_FAILED)
 
 

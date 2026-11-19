@@ -21,7 +21,7 @@ CONFIG_DIR = ".findable"
 
 
 def config_path(root: Path) -> Path:
-    return root / CONFIG_DIR / "config.json"
+    return atomic.state_dir(root) / "config.json"
 
 
 def load_config(root: Path) -> dict:

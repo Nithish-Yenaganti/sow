@@ -43,6 +43,8 @@ def _yes(fid, q, rec_label, alt_value, alt_label, alt_desc="", why=""):
 
 def questions(findings: list[dict], profile: dict, data_map: list[dict]) -> list[Question]:
     """Every decision this scan needs. Already-answered ones are filtered by the caller."""
+    if not findings:
+        return []
     by_rule: dict[str, list[dict]] = {}
     for f in findings:
         by_rule.setdefault(f["rule"], []).append(f)
