@@ -65,7 +65,7 @@ def stamp(raw: dict, site: str) -> dict:
 
 
 def store_path(root: Path, name: str) -> Path:
-    return root / ".findable" / f"{name}.json"
+    return atomic.state_dir(root) / f"{name}.json"
 
 
 def load(root: Path, name: str) -> dict | None:

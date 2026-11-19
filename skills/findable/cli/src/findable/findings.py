@@ -29,7 +29,7 @@ def key(app_root: str, fingerprint: str) -> str:
 
 
 def store_path(root: Path) -> Path:
-    return root / ".findable" / "findings.json"
+    return atomic.state_dir(root) / "findings.json"
 
 
 def load(root: Path) -> dict[str, dict]:

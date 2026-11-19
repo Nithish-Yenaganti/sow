@@ -10,7 +10,30 @@ import tempfile
 from pathlib import Path
 
 
+STATE_NAME = ".compliance"
+
+
+def state_dir(root: Path) -> Path:
+    """Reject links before reading or writing state, including nested files/folders."""
+    return validate_state(Path(root).resolve() / STATE_NAME)
+
+
+def validate_state(state: Path) -> Path:
+    if state.is_symlink():
+        raise ValueError(f"Refusing symlink in {STATE_NAME}: {state}")
+    if state.exists():
+        for folder, dirs, files in os.walk(state, followlinks=False):
+            for name in dirs + files:
+                entry = Path(folder) / name
+                if entry.is_symlink():
+                    raise ValueError(f"Refusing symlink in {STATE_NAME}: {entry}")
+    return state
+
+
 def write_text(path: Path, text: str) -> Path:
+    for parent in (path, *path.parents):
+        if parent.name == STATE_NAME:
+            validate_state(parent)
     path.parent.mkdir(parents=True, exist_ok=True)
     fd, tmp = tempfile.mkstemp(dir=path.parent, prefix=f".{path.name}.", suffix=".tmp")
     try:

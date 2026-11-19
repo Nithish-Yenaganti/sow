@@ -16,7 +16,7 @@ from typing import Annotated, List
 
 import typer
 
-from compliance import __version__, decisions, draft, profile as prof, scan as scanner, store
+from compliance import __version__, atomic, decisions, draft, profile as prof, scan as scanner, store
 from compliance.licenses import notices_markdown
 
 app = typer.Typer(add_completion=False, no_args_is_help=True,
@@ -29,7 +29,12 @@ UNTRUSTED = ("detail and evidence can quote text from the project's own files (m
 
 
 def _root(path: str) -> Path:
-    return Path(path).resolve()
+    root = Path(path).resolve()
+    try:
+        atomic.state_dir(root)
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    return root
 
 
 def _out(obj) -> None:
@@ -105,6 +110,7 @@ def scan(
            "packs": res["packs"], "version": __version__}
     rp = store.write_report(root, store.report_md(run, items, dmap))
     hp = store.write_report_html(root, store.report_html(run, items, dmap))
+    atomic.write_json(prof.state_dir(root) / "last-run.json", run)
     open_q = decisions.open_questions(items, p, dmap, decisions.load(root))
     counts = {w: sum(1 for i in items if i["who"] == w) for w in ("agent", "user", "lawyer")}
     out = {"status": "ok", "not_legal_advice": NOT_LEGAL_ADVICE, "untrusted_fields": UNTRUSTED, "run": run, "delta": delta,
@@ -128,7 +134,7 @@ def decide(
     root = _root(path)
     p = prof.load_profile(root)
     items = store.active(store.load_findings(root))
-    if not items and not store.load_findings(root):
+    if not store.load_findings(root) and not (prof.state_dir(root) / "last-run.json").is_file():
         _out({"status": "error", "notes": ["Run `compliance scan --json` first."]})
         raise typer.Exit(1)
     dmap = store.load_data_map(root)
@@ -201,9 +207,14 @@ def verify(
     """Re-scan and check the given findings. Exit 2 if any are still failing."""
     root = _root(path)
     wanted = [i.strip() for i in ids.split(",") if i.strip()]
+    st = store.load_findings(root)
+    unknown = [fp for fp in wanted if fp not in st]
+    if not wanted or unknown:
+        _out({"status": "error", "checked": [{"fingerprint": fp, "result": "unknown fingerprint"} for fp in unknown],
+              "notes": ["Provide at least one known finding fingerprint."]})
+        raise typer.Exit(1)
     res = _run_scan(root, prof.load_profile(root))
     now = {f["fingerprint"] for f in res["finding_dicts"]}
-    st = store.load_findings(root)
     store.apply_run(st, res["finding_dicts"], only=set(wanted))
     store.save_findings(root, st)
     checked = [{"fingerprint": fp, "result": "still failing" if fp in now else

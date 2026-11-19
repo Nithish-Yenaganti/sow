@@ -9,7 +9,7 @@ from __future__ import annotations
 import asyncio
 import re
 import xml.etree.ElementTree as ET
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import httpx
 from protego import Protego
@@ -57,30 +57,51 @@ def _rel(path: str, prefix: str) -> str:
     return path.rstrip("/") or "/"
 
 
+def _allowed_redirect(source: str, target: str) -> bool:
+    """Stay on the selected host (including www aliases) and port; allow HTTPS upgrades."""
+    old, new = urlparse(source), urlparse(target)
+    if new.scheme not in ("http", "https") or new.username is not None or new.password is not None:
+        return False
+    if site_host(old.hostname or "") != site_host(new.hostname or ""):
+        return False
+    old_port = old.port or (443 if old.scheme == "https" else 80)
+    new_port = new.port or (443 if new.scheme == "https" else 80)
+    return (old.scheme == new.scheme and old_port == new_port or
+            old.scheme == "http" and new.scheme == "https" and old_port == 80 and new_port == 443)
+
+
 async def _get(client: httpx.AsyncClient, url: str, ua: str, max_bytes: int = MAX_PAGE_BYTES) -> dict:
+    redirects = []
+    initial = url
     try:
-        async with client.stream("GET", url, headers={"User-Agent": ua, "Accept": "text/html,application/xml;q=0.9,*/*;q=0.8"}) as r:
-            ctype = r.headers.get("content-type", "")
-            texty = "html" in ctype or "xml" in ctype or ctype.startswith("text/")
-            body = bytearray()
-            truncated = False
-            if texty:
-                async for chunk in r.aiter_bytes():
-                    body += chunk
-                    if len(body) > max_bytes:
-                        truncated = True
-                        break
-            text = body[:max_bytes].decode(r.encoding or "utf-8", errors="replace") if texty else ""
-            return {
-                "status": r.status_code,
-                "final_url": str(r.url),
-                "redirects": [str(h.url) for h in r.history],
-                "text": text,
-                "truncated": truncated,
-                "server": r.headers.get("server", ""),
-            }
-    except httpx.HTTPError as e:
-        return {"status": None, "error": f"{type(e).__name__}: {e}", "redirects": [], "text": ""}
+        for _ in range(21):
+            # Never let the HTTP client follow an unvalidated Location header.
+            async with client.stream("GET", url, follow_redirects=False,
+                                     headers={"User-Agent": ua, "Accept": "text/html,application/xml;q=0.9,*/*;q=0.8"}) as r:
+                if r.status_code in (301, 302, 303, 307, 308) and r.headers.get("location"):
+                    target = urljoin(str(r.url), r.headers["location"])
+                    if not _allowed_redirect(initial, target):
+                        return {"status": None, "final_url": target, "redirects": redirects,
+                                "error": "skipped: redirect outside the selected site", "text": ""}
+                    redirects.append(str(r.url))
+                    url = target
+                    continue
+                ctype = r.headers.get("content-type", "")
+                texty = "html" in ctype or "xml" in ctype or ctype.startswith("text/")
+                body = bytearray()
+                truncated = False
+                if texty:
+                    async for chunk in r.aiter_bytes():
+                        body += chunk
+                        if len(body) > max_bytes:
+                            truncated = True
+                            break
+                text = body[:max_bytes].decode(r.encoding or "utf-8", errors="replace") if texty else ""
+                return {"status": r.status_code, "final_url": str(r.url), "redirects": redirects,
+                        "text": text, "truncated": truncated, "server": r.headers.get("server", "")}
+        return {"status": None, "error": "too many redirects", "redirects": redirects, "text": ""}
+    except (httpx.HTTPError, ValueError) as e:
+        return {"status": None, "error": f"{type(e).__name__}: {e}", "redirects": redirects, "text": ""}
 
 
 async def _sitemap_urls(client: httpx.AsyncClient, url: str, host: str, depth: int = 0, limit: int = 2000) -> tuple[list[str], dict]:

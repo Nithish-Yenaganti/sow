@@ -25,7 +25,12 @@ UNTRUSTED = ("title, current and evidence can quote text from the scanned site (
 
 
 def _root(path: str) -> Path:
-    return Path(path).resolve()
+    root = Path(path).resolve()
+    try:
+        atomic.state_dir(root)
+    except ValueError as exc:
+        raise typer.BadParameter(str(exc)) from exc
+    return root
 
 
 def _print_json(obj) -> None:
@@ -254,9 +259,14 @@ def verify(
         typer.echo("No previous scan config. Run: findable scan")
         raise typer.Exit(1)
     store = findings.load(root)
-    wanted = [i.strip() for i in ids.split(",")] if ids else None
+    wanted = [i.strip() for i in ids.split(",") if i.strip()] if ids is not None else None
     if wanted:   # accept bare "rule|url" fingerprints in monorepos too
         wanted = [w if w in store else findings.key(app_obj.root, w) for w in wanted]
+    if wanted is not None and (not wanted or any(fp not in store for fp in wanted)):
+        _print_json({"status": "error", "checked": [{"fingerprint": fp, "result": "unknown fingerprint"}
+                                                     for fp in wanted if fp not in store],
+                     "notes": ["Provide at least one known finding fingerprint."]})
+        raise typer.Exit(1)
     targets = verify_targets(store, wanted, app_obj.root)
     if not targets:
         _print_json({"status": "ok", "checked": [], "note": "nothing to verify"}) if as_json else typer.echo("Nothing to verify.")

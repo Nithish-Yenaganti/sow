@@ -6,7 +6,7 @@ import json
 import re
 import subprocess
 import tomllib
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from pathlib import Path
 
 SKIP_DIRS = {"node_modules", ".git", ".next", ".nuxt", ".svelte-kit", ".astro", "dist", "build", "out", ".venv", "venv",
@@ -102,13 +102,12 @@ def norm_py(name: str) -> str:
 
 
 def _read_deps(pj: Project) -> None:
-    seen: dict[tuple[str, str], Dep] = {}
+    seen: dict[tuple[str, str, str | None, str], Dep] = {}
 
     def add(d: Dep) -> None:
-        k = (d.ecosystem, d.name)
+        k = (d.ecosystem, d.name, d.version, d.source)
         if k in seen:
             old = seen[k]
-            old.version = old.version or d.version
             old.dev = old.dev and d.dev
         else:
             seen[k] = d
@@ -142,25 +141,55 @@ def _read_deps(pj: Project) -> None:
         elif n == "pyproject.toml":
             for name, ver, spec, dev in _pyproject(pj.text(f)):
                 add(Dep(name, "PyPI", ver, spec, dev, f.as_posix()))
-    # Lock files fill in exact versions for Python.
-    for f in pj.files:
-        if f.name in ("uv.lock", "poetry.lock"):
-            for pkg in _toml(pj.text(f)).get("package", []):
-                if not isinstance(pkg, dict) or not isinstance(pkg.get("name"), str):
+    # Resolve Python dependencies against their own project or an ancestor workspace lock,
+    # never a sibling project's lock. uv may pin multiple versions under different markers.
+    resolved = []
+    for dep in seen.values():
+        versions = []
+        if dep.ecosystem == "PyPI" and dep.version is None:
+            folder = Path(dep.source).parent
+            for base in (folder, *folder.parents):
+                locks = [base / name for name in ("uv.lock", "poetry.lock", "Pipfile.lock")
+                         if base / name in pj.files]
+                if not locks:
                     continue
-                d = seen.get(("PyPI", norm_py(pkg["name"])))
-                if d and not d.version and isinstance(pkg.get("version"), str):
-                    d.version = pkg["version"]
-        elif f.name == "Pipfile.lock":
-            try:
-                lock = json.loads(pj.text(f))
-            except ValueError:
-                continue
-            for section in ("default", "develop"):
-                for name, info in (lock.get(section) or {}).items():
-                    v = str((info or {}).get("version", "")).lstrip("=")
-                    add(Dep(norm_py(name), "PyPI", v or None, "", section == "develop", f.as_posix()))
-    pj.deps = sorted(seen.values(), key=lambda d: (d.ecosystem, d.name))
+                for lock in locks:
+                    if lock.name == "Pipfile.lock":
+                        try:
+                            doc = json.loads(pj.text(lock))
+                        except ValueError:
+                            continue
+                        for section in ("default", "develop"):
+                            for name, info in (doc.get(section) or {}).items():
+                                if norm_py(name) == dep.name and isinstance(info, dict):
+                                    version = str(info.get("version", "")).removeprefix("==")
+                                    if version:
+                                        versions.append(version)
+                    else:
+                        for pkg in _toml(pj.text(lock)).get("package", []):
+                            if isinstance(pkg, dict) and isinstance(pkg.get("name"), str) and \
+                                    norm_py(pkg["name"]) == dep.name and isinstance(pkg.get("version"), str):
+                                versions.append(pkg["version"])
+                break
+        if versions:
+            resolved.extend(replace(dep, version=v) for v in dict.fromkeys(versions))
+        else:
+            resolved.append(dep)
+    # Pipfile projects can have no separate manifest that this reader understands.
+    for f in pj.files:
+        if f.name != "Pipfile.lock" or TEST_RE.search(f.parent.as_posix() + "/"):
+            continue
+        try:
+            lock = json.loads(pj.text(f))
+        except ValueError:
+            continue
+        for section in ("default", "develop"):
+            for name, info in (lock.get(section) or {}).items():
+                version = str((info or {}).get("version", "")).removeprefix("==")
+                if not any(d.ecosystem == "PyPI" and d.name == norm_py(name) and
+                           Path(d.source).parent == f.parent for d in resolved):
+                    resolved.append(Dep(norm_py(name), "PyPI", version or None, "", section == "develop", f.as_posix()))
+    pj.deps = sorted(resolved, key=lambda d: (d.ecosystem, d.name, d.version or "", d.source))
 
 
 def _npm_lock(pj: Project, folder: Path) -> dict:

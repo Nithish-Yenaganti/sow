@@ -17,7 +17,7 @@
         "./skills/guarded"
       ],
       "description": "findable: technical SEO, AEO and GEO for your codebase. Checks whether Google and AI tools (ChatGPT, Claude, Perplexity) can find, read and cite your site, and fixes what you approve. compliance: finds privacy, cookie consent, GDPR/CCPA, payments, AI disclosure and licensing gaps and builds the fixes you approve (not legal advice). guarded: finds the security holes AI-built apps tend to ship (SQL injection, XSS, shell injection, leaked keys, Supabase RLS, prompt injection, poisoned MCP and AI-tool configs, hidden instructions, made-up packages, known CVEs) and fixes what you approve (a code check, not a pentest). No API keys.",
-      "version": "0.9.0",
+      "version": "0.9.1",
       "author": {
         "name": "Nithish-Yenaganti"
       },
