@@ -1,7 +1,7 @@
 [project]
 # Not published to PyPI: the skill runs this project with `uv run --project`.
 name = "compliance"
-version = "0.1.1"
+version = "0.1.2"
 description = "Find the privacy, licensing, payments and AI compliance gaps in your web project, then build the fixes you agree to."
 requires-python = ">=3.11"
 license = "MIT"

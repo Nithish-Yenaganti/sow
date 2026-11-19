@@ -1,7 +1,7 @@
 [project]
 # Not published to PyPI: the skill runs this project with `uv run --project`.
 name = "guarded"
-version = "0.2.0"
+version = "0.2.1"
 description = "Find the security holes AI-built apps tend to ship (injection, XSS, leaked keys, open databases, poisoned AI-tool configs, made-up packages), then fix the ones you agree to."
 requires-python = ">=3.11"
 license = "MIT"
